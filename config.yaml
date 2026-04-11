@@ -10,7 +10,7 @@ llm:
 
 mcp_server:
   transport: "streamable_http"       # "streamable_http" or "sse"
-  url: "https://md-mcp-prod-na-509743579690.us-central1.run.app/mcp/http"   # adjust to your server's URL
+  url: "http://localhost/mcp"        # adjust to your server's URL
   timeout: 30.0
   oauth:
     enabled: true                    # set to false to skip OAuth

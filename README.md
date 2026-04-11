@@ -13,8 +13,8 @@ Traditional testing checks whether tools *work*. This checks whether they're *us
 ```
 ┌──────────────┐                              ┌──────────────┐
 │ Tester Agent │◄────── Orchestrator ────────►│  User Agent  │
-│ (LM Studio)  │       (Python, async)         │ (LM Studio)  │
-└──────────────┘              │                └──────────────┘
+│ (LM Studio)  │       (Python, async)        │ (LM Studio)  │
+└──────────────┘              │               └──────────────┘
                               │ MCP (HTTP/SSE)
                          ┌────▼────┐
                          │   MCP   │

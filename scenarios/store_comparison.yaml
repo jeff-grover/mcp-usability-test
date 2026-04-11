@@ -1,0 +1,17 @@
+name: "Store Performance Comparison"
+description: "Test the workflow for comparing metrics across two stores"
+persona: >
+  You are a regional marketing manager who needs to compare Q4 performance
+  between two store locations to decide where to allocate next quarter's
+  marketing budget. You need concrete numbers to present to leadership.
+goals:
+  - "Find and compare sales metrics for two different store locations"
+  - "Identify which store had better foot traffic conversion"
+  - "Determine if there are product categories where one store outperforms the other"
+  - "Generate a summary with specific numbers suitable for a leadership presentation"
+tester_focus:
+  - "Watch for: Does the User need multiple tool calls when one should suffice?"
+  - "Watch for: Are error messages helpful when store names don't match exactly?"
+  - "Watch for: Is the data format easy to interpret and compare across stores?"
+  - "Watch for: Can the User easily get side-by-side comparisons, or must they manually combine results?"
+max_rounds: 20

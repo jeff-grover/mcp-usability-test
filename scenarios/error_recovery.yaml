@@ -1,0 +1,19 @@
+name: "Error Handling & Recovery"
+description: "Test how the tools handle incorrect inputs and edge cases"
+persona: >
+  You are a retail analyst who sometimes makes typos and isn't always sure
+  of exact store names or date formats. You tend to experiment by trying
+  different parameter values to see what works.
+goals:
+  - "Try to query a store using a slightly misspelled name and see what happens"
+  - "Try to use an invalid date range or format and observe the error message"
+  - "Attempt to request a metric or report type that might not exist"
+  - "Try calling a tool with missing required parameters"
+  - "Attempt to use unexpected parameter values (e.g., negative numbers, empty strings)"
+tester_focus:
+  - "Watch for: Do error messages explain what went wrong AND how to fix it?"
+  - "Watch for: Does the system suggest correct values (e.g., 'did you mean...')?"
+  - "Watch for: Are required vs optional parameters clear from the tool descriptions?"
+  - "Watch for: Does the User get stuck in error loops, or can they recover quickly?"
+  - "Watch for: Are validation errors returned before expensive operations are attempted?"
+max_rounds: 20

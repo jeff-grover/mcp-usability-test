@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.venv/
+
+# Session state (contains tokens and conversation data)
+state/session.json
+state/session.tmp
+state/transcript.jsonl
+state/oauth_tokens.json
+state/oauth_tokens.tmp
+
+# Observation output (keep .gitkeep but ignore generated files)
+observations/session_*.md
+
+# Logs
+harness.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store

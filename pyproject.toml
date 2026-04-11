@@ -1,0 +1,15 @@
+[project]
+name = "mcp-usability-test"
+version = "0.1.0"
+description = "Dual-LLM harness for testing MCP server usability"
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=1.50.0",
+    "mcp>=1.0.0",
+    "pyyaml>=6.0",
+    "tiktoken>=0.7.0",
+    "rich>=13.0",
+]
+
+[project.scripts]
+mcp-usability-test = "src.main:main"

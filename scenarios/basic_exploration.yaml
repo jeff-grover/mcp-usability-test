@@ -1,0 +1,17 @@
+name: "Tool Discovery & Exploration"
+description: "Test how naturally the User discovers and understands the available tools"
+persona: >
+  You are a new retail marketing analyst who has just been given access to
+  this analytics platform. You've never used these tools before and need
+  to figure out what's available and how to use them.
+goals:
+  - "Explore what analytics tools are available and understand what each one does"
+  - "Try to get a high-level overview of store performance for any store"
+  - "Attempt to find sales trends or patterns over time"
+  - "Try to combine data from multiple tools to build a broader picture"
+tester_focus:
+  - "Watch for: Are tool names self-explanatory? Does the User guess correctly what each tool does?"
+  - "Watch for: Does the User know which tool to start with, or does it feel random?"
+  - "Watch for: Are the tool descriptions sufficient to understand parameters without trial and error?"
+  - "Watch for: Does the User express confusion about any parameter names or types?"
+max_rounds: 15

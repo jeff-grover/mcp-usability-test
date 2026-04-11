@@ -1,0 +1,35 @@
+llm:
+  base_url: "http://localhost:1234/v1"
+  api_key: "lm-studio"
+  model: "gemma-4-e4b"
+  temperature: 0.7
+  max_tokens: 2048
+  timeout_seconds: 120
+  max_retries: 3
+  retry_delay_seconds: 5.0
+
+mcp_server:
+  transport: "streamable_http"       # "streamable_http" or "sse"
+  url: "http://localhost:8080/mcp"   # adjust to your server's URL
+  timeout: 30.0
+  oauth:
+    enabled: true                    # set to false to skip OAuth
+    callback_port: 8100              # local port for OAuth redirect
+    scopes: ""                       # space-separated scopes (empty = server default)
+    token_file: "state/oauth_tokens.json"  # persisted across restarts
+
+orchestrator:
+  max_tool_iterations: 10       # max tool calls per user turn
+  observation_interval: 3       # tester observes every N rounds
+  context_window_size: 60       # messages kept in sliding window
+  max_context_tokens: 100000    # token budget per LLM call
+  result_truncation: 8000       # max chars per tool result
+
+scenarios:
+  - scenarios/basic_exploration.yaml
+  - scenarios/store_comparison.yaml
+  - scenarios/error_recovery.yaml
+
+output:
+  observations_dir: "observations"
+  state_dir: "state"

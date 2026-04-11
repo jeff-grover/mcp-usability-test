@@ -63,6 +63,8 @@ def build_tester_system_prompt(
     goals: list[str],
     tester_focus: list[str],
     previous_observations: str,
+    eval_goals: list[dict[str, str]] | None = None,
+    completed_goal_ids: list[str] | None = None,
 ) -> str:
     """Build the system prompt for the Tester agent.
 
@@ -72,35 +74,102 @@ def build_tester_system_prompt(
     goals_text = "\n".join(f"  {i+1}. {g}" for i, g in enumerate(goals))
     focus_text = "\n".join(f"  - {f}" for f in tester_focus)
 
+    # Build eval_goals section if present
+    eval_section = ""
+    if eval_goals:
+        completed = set(completed_goal_ids or [])
+        pending_lines = []
+        done_lines = []
+        for g in eval_goals:
+            gid = g["id"]
+            task = g["task"]
+            hint = g.get("success_hint", "")
+            if gid in completed:
+                done_lines.append(f"  - [{gid}] {task}")
+            else:
+                line = f"  - [{gid}] {task}"
+                if hint:
+                    line += f"\n    (Success looks like: {hint})"
+                pending_lines.append(line)
+
+        eval_section = f"""
+## Evaluation Tasks
+
+These are the specific tasks the User must accomplish. Assign them one at a time.
+After the User has successfully completed a task, write on its own line:
+GOAL DONE: <goal_id>
+
+Do NOT wrap up or summarize the session until ALL tasks below are marked DONE.
+
+### Pending tasks:
+{chr(10).join(pending_lines) if pending_lines else "  (none)"}
+
+### Completed tasks:
+{chr(10).join(done_lines) if done_lines else "  (none yet)"}
+"""
+
+    # Free exploration mode: no goals and no eval_goals
+    free_exploration_section = ""
+    if not goals and not eval_goals:
+        free_exploration_section = """
+## Free Exploration Mode
+
+You are systematically exploring ALL tools available on this platform. Follow this process:
+
+1. **Start by asking the User to list all available tools.** Have them describe what each tool appears to do based on its name and description.
+2. **Work through each tool one at a time.** For each tool:
+   - Ask the User to call it with reasonable inputs
+   - Ask the User to explain what the results mean
+   - Probe whether the parameters were clear or confusing
+   - Try edge cases: what happens with missing parameters, bad inputs, or empty results?
+3. **After covering individual tools**, ask the User to combine tools for multi-step analytical workflows:
+   - Can they answer a business question that requires chaining multiple tools?
+   - Is the data from one tool easy to feed into another?
+4. **Keep a mental checklist** of which tools have been tested. Do NOT wrap up until every tool has been tried at least once.
+5. **Ask interpretive questions**: After each tool call, ask "Was that result what you expected?" or "What would you do with this data?"
+
+You should be thorough and methodical. Cover every tool, every required parameter, and as many optional parameters as practical.
+"""
+
     return f"""You are a UX researcher conducting a usability test of an analytics tool suite. You are observing an AI assistant (the "User") as it tries to accomplish tasks using a set of retail analytics tools.
 
 ## Your role
 
-1. Give the User one task at a time from the scenario goals below.
+1. Give the User one task at a time.
 2. After the User works through each task, assess how the experience went.
-3. Record your observations using the structured format below.
+3. Record usability observations using the format below.
 4. Guide the User to the next task, or ask follow-up questions to probe deeper into usability issues you notice.
 
 ## Current scenario: {scenario_name}
-
-### Goals for the User to accomplish:
-{goals_text}
+{eval_section}{free_exploration_section}
+### General goals:
+{goals_text if goals_text.strip() else "  (Free exploration — systematically test all available tools)"}
 
 ### Areas to focus on:
 {focus_text}
 
 ## How to record observations
 
-When you notice a usability issue, include it in your response using this exact format:
+When you notice a usability issue, write it on its own line using this format:
 
+OBS: [severity] [category] description of the issue with specific details
+
+Severity: critical, major, minor, suggestion
+Category: tool-naming, parameter-clarity, error-messages, workflow-efficiency, missing-capability, data-format, documentation, discoverability
+
+Example:
+OBS: [major] [tool-naming] The search_tests tool name suggests text search but requires integer IDs
+OBS: [minor] [parameter-clarity] The date_range parameter does not indicate expected format
+
+You can also use the longer block format if you prefer:
 [OBSERVATION]
-category: <one of: tool-naming, parameter-clarity, error-messages, workflow-efficiency, missing-capability, data-format, documentation, discoverability>
-severity: <one of: critical, major, minor, suggestion>
-tool: <tool name, or "general" if not tool-specific>
-description: <what happened and why it's a problem, with specific details>
+category: tool-naming
+severity: major
+tool: search_tests
+description: The tool name suggests text search but requires integer IDs
 [/OBSERVATION]
 
-You can include multiple observation blocks in a single response. The observations will be extracted and logged separately — the User will NOT see them.
+The User will NOT see your observations — they are extracted and logged separately.
 
 ## Guidelines
 
@@ -114,7 +183,7 @@ You can include multiple observation blocks in a single response. The observatio
 
 ## Communication style
 
-When speaking TO the User, be concise and task-focused. Write your observations in the [OBSERVATION] blocks — don't mix observation commentary into your instructions to the User.
+When speaking TO the User, be concise and task-focused. Keep your observations separate from your instructions to the User.
 """
 
 
@@ -148,5 +217,9 @@ Consider:
 
 {previous_observations}
 
-Write your observations using the [OBSERVATION] format. Focus on new insights only.
+List your findings as numbered items. For each, start the line with a severity in brackets. Focus on new insights only.
+
+Example format:
+1. [major] The search_tests tool requires integer IDs but users naturally try string names.
+2. [minor] Error messages from get_site_tests don't suggest alternative store IDs.
 """

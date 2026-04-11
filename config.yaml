@@ -1,7 +1,7 @@
 llm:
   base_url: "http://localhost:1234/v1"
   api_key: "lm-studio"
-  model: "gemma-4-e4b"
+  model: "gemma-4-e4b-it"
   temperature: 0.7
   max_tokens: 2048
   timeout_seconds: 120
@@ -10,7 +10,7 @@ llm:
 
 mcp_server:
   transport: "streamable_http"       # "streamable_http" or "sse"
-  url: "http://localhost:8080/mcp"   # adjust to your server's URL
+  url: "https://md-mcp-prod-na-509743579690.us-central1.run.app/mcp/http"   # adjust to your server's URL
   timeout: 30.0
   oauth:
     enabled: true                    # set to false to skip OAuth
@@ -26,6 +26,7 @@ orchestrator:
   result_truncation: 8000       # max chars per tool result
 
 scenarios:
+  - scenarios/ab_test_analysis.yaml
   - scenarios/basic_exploration.yaml
   - scenarios/store_comparison.yaml
   - scenarios/error_recovery.yaml

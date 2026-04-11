@@ -67,7 +67,10 @@ class MCPBridge:
         else:
             raise ValueError(f"Unknown transport: {self.config.transport}")
 
-        read_stream, write_stream = await self._transport_ctx.__aenter__()
+        transport_result = await self._transport_ctx.__aenter__()
+        # streamable_http_client yields (read, write, get_session_id);
+        # sse_client yields (read, write)
+        read_stream, write_stream = transport_result[0], transport_result[1]
         self._session_ctx = ClientSession(read_stream, write_stream)
         self._session = await self._session_ctx.__aenter__()
         await self._session.initialize()

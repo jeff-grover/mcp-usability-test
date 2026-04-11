@@ -22,6 +22,7 @@ class SessionState:
     tester_summary: str = ""
     user_summary: str = ""
     observation_count: int = 0
+    completed_goals: list[str] = field(default_factory=list)
     started_at: str = ""
     updated_at: str = ""
 

@@ -9,7 +9,13 @@ from typing import Any
 
 from .llm_client import LLMClient, LLMConfig
 from .mcp_bridge import MCPBridge, MCPConfig
-from .observations import ObservationWriter, parse_observations, strip_observations
+from .observations import (
+    ObservationWriter,
+    parse_observations,
+    strip_observations,
+    parse_goal_completions,
+    strip_goal_markers,
+)
 from .context import ContextManager, count_message_tokens
 from .state import StateManager, SessionState
 from .display import Display
@@ -28,6 +34,7 @@ class Scenario:
     description: str = ""
     persona: str = ""
     goals: list[str] = field(default_factory=list)
+    eval_goals: list[dict[str, str]] = field(default_factory=list)
     tester_focus: list[str] = field(default_factory=list)
     max_rounds: int = 20
 
@@ -132,6 +139,8 @@ class Orchestrator:
             goals=scenario.goals,
             tester_focus=scenario.tester_focus,
             previous_observations=self.obs_writer.get_previous_summaries(),
+            eval_goals=scenario.eval_goals or None,
+            completed_goal_ids=self._state.completed_goals,
         )
 
         # Initialize message histories (or use resumed state)
@@ -145,9 +154,10 @@ class Orchestrator:
             ]
 
         self._tool_transcript = []
-        start_round = self._state.round_num
+        round_num = self._state.round_num
+        rounds_since_goal_completion = 0
 
-        for round_num in range(start_round, scenario.max_rounds):
+        while round_num < scenario.max_rounds:
             self._state.round_num = round_num
             self.display.banner(scenario.name, round_num)
 
@@ -157,6 +167,12 @@ class Orchestrator:
                 self.display.error("Tester produced no response, ending scenario")
                 break
 
+            # Detect tester signaling session end (e.g. "Session Concluded")
+            if self._is_session_end_signal(tester_response):
+                self.display.info("Tester signaled session end, wrapping up scenario")
+                self._save_state()
+                break
+
             # Phase 2: User works with tools
             await self._user_turn(tester_response)
 
@@ -164,17 +180,46 @@ class Orchestrator:
             if (round_num + 1) % self.config.observation_interval == 0:
                 await self._observation_checkpoint(scenario)
 
+            # Check goal-based termination
+            if scenario.eval_goals and self._all_goals_complete(scenario):
+                self.display.info("All evaluation goals completed!")
+                self._save_state()
+                break
+
+            # Nudge tester if no goals marked done after several rounds
+            if scenario.eval_goals:
+                rounds_since_goal_completion += 1
+                if rounds_since_goal_completion >= 3:
+                    self._inject_goal_reminder()
+                    rounds_since_goal_completion = 0
+
             # Save state after each round
             self._save_state()
+            round_num += 1
+        else:
+            if scenario.eval_goals:
+                incomplete = self._incomplete_goals(scenario)
+                if incomplete:
+                    self.display.info(
+                        f"Reached max rounds. Incomplete goals: {', '.join(incomplete)}"
+                    )
 
         # Reset for next scenario
         self._state.round_num = 0
         self._state.user_messages = []
         self._state.tester_messages = []
+        self._state.completed_goals = []
         self._save_state()
 
     async def _tester_turn(self, scenario: Scenario) -> str | None:
         """Have the Tester agent produce a task for the User."""
+        # Inject goal status before transcript if eval_goals are active
+        if scenario.eval_goals:
+            self._state.tester_messages.append({
+                "role": "user",
+                "content": self._build_goal_status(scenario),
+            })
+
         # Add tool transcript to tester's context
         if self._tool_transcript:
             transcript_text = "\n".join(self._tool_transcript[-20:])
@@ -210,8 +255,15 @@ class Orchestrator:
             self.display.observation(obs.category, obs.severity, obs.description)
             self._state.observation_count += 1
 
-        # Get user-facing content (without observation blocks)
-        user_facing = strip_observations(full_text)
+        # Extract goal completions
+        completed = parse_goal_completions(full_text)
+        for goal_id in completed:
+            if goal_id not in self._state.completed_goals:
+                self._state.completed_goals.append(goal_id)
+                self.display.info(f"Goal completed: {goal_id}")
+
+        # Get user-facing content (without observations and goal markers)
+        user_facing = strip_goal_markers(strip_observations(full_text))
         self.display.tester_message(user_facing)
 
         # Record in tester's history
@@ -364,6 +416,66 @@ class Orchestrator:
             self.display.status(
                 f"Checkpoint: {len(observations)} new observation(s)"
             )
+
+    def _all_goals_complete(self, scenario: Scenario) -> bool:
+        """Check if all eval_goals have been marked complete."""
+        required = {g["id"] for g in scenario.eval_goals}
+        return required.issubset(set(self._state.completed_goals))
+
+    def _incomplete_goals(self, scenario: Scenario) -> list[str]:
+        """Return IDs of eval_goals not yet completed."""
+        completed = set(self._state.completed_goals)
+        return [g["id"] for g in scenario.eval_goals if g["id"] not in completed]
+
+    def _build_goal_status(self, scenario: Scenario) -> str:
+        """Build a goal status message to inject into tester context."""
+        completed = set(self._state.completed_goals)
+        pending = []
+        done = []
+        for g in scenario.eval_goals:
+            if g["id"] in completed:
+                done.append(g["id"])
+            else:
+                pending.append(f"[{g['id']}] {g['task']}")
+
+        lines = ["## Goal Status"]
+        if done:
+            lines.append(f"Completed: {', '.join(done)}")
+        if pending:
+            lines.append("Pending tasks:")
+            for p in pending:
+                lines.append(f"  - {p}")
+        else:
+            lines.append("All tasks complete. You may wrap up the session.")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _is_session_end_signal(tester_response: str) -> bool:
+        """Detect when the tester is signaling the session is over."""
+        stripped = tester_response.strip().strip("()")
+        # Short responses that are just wrap-up phrases
+        if len(stripped) < 80:
+            end_phrases = [
+                "session concluded", "session complete", "session ended",
+                "testing complete", "testing concluded",
+                "all tasks complete", "all goals complete",
+                "end of session", "wrap up",
+            ]
+            lower = stripped.lower()
+            if any(phrase in lower for phrase in end_phrases):
+                return True
+        return False
+
+    def _inject_goal_reminder(self):
+        """Nudge the tester to mark goals as done if it hasn't recently."""
+        self._state.tester_messages.append({
+            "role": "user",
+            "content": (
+                "REMINDER: When a task is complete, you must write "
+                "GOAL DONE: <goal_id> on its own line. "
+                "Check if any pending tasks have already been accomplished."
+            ),
+        })
 
     def _save_state(self):
         """Persist current state."""

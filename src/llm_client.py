@@ -79,7 +79,7 @@ class LLMClient:
                     kwargs["tool_choice"] = "auto"
 
                 completion = await self._client.chat.completions.create(**kwargs)
-                return self._parse_response(completion)
+                return self._parse_response(completion, has_tools=bool(tools))
 
             except Exception as e:
                 last_error = e
@@ -98,7 +98,7 @@ class LLMClient:
             f"LLM call failed after {self.config.max_retries} attempts"
         ) from last_error
 
-    def _parse_response(self, completion: ChatCompletion) -> LLMResponse:
+    def _parse_response(self, completion: ChatCompletion, has_tools: bool = False) -> LLMResponse:
         """Parse a completion into an LLMResponse, with fallback parsing."""
         choice = completion.choices[0]
         message = choice.message
@@ -113,7 +113,7 @@ class LLMClient:
                     tool_calls.append(parsed)
 
         # Fallback: if no structured tool calls, try to extract from text
-        if not tool_calls and content and tools:
+        if not tool_calls and content and has_tools:
             tool_calls = self._extract_tool_calls_from_text(content)
 
         return LLMResponse(content=content, tool_calls=tool_calls, raw=completion)

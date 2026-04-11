@@ -80,6 +80,7 @@ class _CallbackHandler(BaseHTTPRequestHandler):
     auth_code: str | None = None
     state: str | None = None
     _event: asyncio.Event | None = None
+    _loop: asyncio.AbstractEventLoop | None = None
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -101,9 +102,12 @@ class _CallbackHandler(BaseHTTPRequestHandler):
             b"</body></html>"
         )
 
-        # Signal the async waiter
-        if _CallbackHandler._event:
-            _CallbackHandler._event.set()
+        # Signal the async waiter — must use call_soon_threadsafe since
+        # this handler runs in the HTTP server thread, not the event loop thread
+        if _CallbackHandler._event and _CallbackHandler._loop:
+            _CallbackHandler._loop.call_soon_threadsafe(
+                _CallbackHandler._event.set
+            )
 
     def log_message(self, format, *args):
         logger.debug("OAuth callback server: %s", format % args)
@@ -123,6 +127,7 @@ async def _wait_for_callback() -> tuple[str, str | None]:
     _CallbackHandler.auth_code = None
     _CallbackHandler.state = None
     _CallbackHandler._event = asyncio.Event()
+    _CallbackHandler._loop = asyncio.get_running_loop()
 
     server = HTTPServer(("127.0.0.1", CALLBACK_PORT), _CallbackHandler)
     thread = Thread(target=server.serve_forever, daemon=True)

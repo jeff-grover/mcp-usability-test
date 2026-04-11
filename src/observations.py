@@ -24,9 +24,25 @@ OBSERVATION_PATTERN = re.compile(
     r"\[OBSERVATION\](.*?)\[/OBSERVATION\]", re.DOTALL
 )
 
+# Tier 2: single-line format — OBS: [severity] [category] description
+SIMPLE_OBS_PATTERN = re.compile(
+    r"^OBS:\s*\[(\w+)\]\s*\[([\w-]+)\]\s*(.+)$", re.MULTILINE
+)
 
-def parse_observations(text: str) -> list[Observation]:
-    """Extract structured observations from text."""
+# Tier 3: numbered list — 1. [severity] description (for observation checkpoints)
+NUMBERED_OBS_PATTERN = re.compile(
+    r"^\d+\.\s*\[(\w+)\]\s*(.+)$", re.MULTILINE
+)
+
+# Goal completion markers — GOAL DONE: <goal_id>
+GOAL_DONE_PATTERN = re.compile(
+    r"^GOAL\s*(?:DONE|COMPLETE|FINISHED)\s*[:\-]\s*(\S+)",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def _parse_block_observations(text: str) -> list[Observation]:
+    """Tier 1: Extract observations from [OBSERVATION]...[/OBSERVATION] blocks."""
     observations: list[Observation] = []
     for match in OBSERVATION_PATTERN.finditer(text):
         block = match.group(1).strip()
@@ -46,15 +62,65 @@ def parse_observations(text: str) -> list[Observation]:
                 elif key == "description":
                     obs.description = value
             elif obs.description:
-                # Continuation of description
                 obs.description += " " + line
         observations.append(obs)
     return observations
 
 
+def _parse_simple_observations(text: str) -> list[Observation]:
+    """Tier 2: Extract observations from OBS: [severity] [category] lines."""
+    observations: list[Observation] = []
+    for match in SIMPLE_OBS_PATTERN.finditer(text):
+        observations.append(Observation(
+            severity=match.group(1).lower(),
+            category=match.group(2).lower(),
+            description=match.group(3).strip(),
+        ))
+    return observations
+
+
+def _parse_numbered_observations(text: str) -> list[Observation]:
+    """Tier 3: Extract observations from numbered list items with severity."""
+    observations: list[Observation] = []
+    for match in NUMBERED_OBS_PATTERN.finditer(text):
+        observations.append(Observation(
+            severity=match.group(1).lower(),
+            category="general",
+            description=match.group(2).strip(),
+        ))
+    return observations
+
+
+def parse_observations(text: str) -> list[Observation]:
+    """Extract structured observations using tiered fallback parsing."""
+    # Try structured blocks first
+    observations = _parse_block_observations(text)
+    if observations:
+        return observations
+    # Fall back to single-line OBS: format
+    observations = _parse_simple_observations(text)
+    if observations:
+        return observations
+    # Fall back to numbered list format
+    return _parse_numbered_observations(text)
+
+
 def strip_observations(text: str) -> str:
-    """Remove [OBSERVATION] blocks from text, returning user-facing content."""
-    return OBSERVATION_PATTERN.sub("", text).strip()
+    """Remove all observation formats from text, returning user-facing content."""
+    result = OBSERVATION_PATTERN.sub("", text)
+    result = SIMPLE_OBS_PATTERN.sub("", result)
+    result = NUMBERED_OBS_PATTERN.sub("", result)
+    return result.strip()
+
+
+def parse_goal_completions(text: str) -> list[str]:
+    """Extract completed goal IDs from GOAL DONE: markers."""
+    return GOAL_DONE_PATTERN.findall(text)
+
+
+def strip_goal_markers(text: str) -> str:
+    """Remove GOAL DONE lines from user-facing text."""
+    return GOAL_DONE_PATTERN.sub("", text).strip()
 
 
 class ObservationWriter:

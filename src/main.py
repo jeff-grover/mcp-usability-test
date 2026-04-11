@@ -30,8 +30,33 @@ def load_scenario(path: str) -> Scenario:
         description=data.get("description", ""),
         persona=data.get("persona", ""),
         goals=data.get("goals", []),
+        eval_goals=data.get("eval_goals", []),
         tester_focus=data.get("tester_focus", []),
         max_rounds=data.get("max_rounds", 20),
+    )
+
+
+def free_exploration_scenario() -> Scenario:
+    """Generate a built-in scenario for systematic tool exploration."""
+    return Scenario(
+        name="Free Exploration",
+        description="Systematic exploration of all available MCP tools",
+        persona=(
+            "You are an analyst who has just been given access to a new "
+            "analytics platform. You have never used these tools before. "
+            "Explore every tool available to understand what the platform "
+            "can do."
+        ),
+        goals=[],  # empty — triggers free exploration prompt in prompts.py
+        eval_goals=[],
+        tester_focus=[
+            "Watch for: Are tool names self-explanatory?",
+            "Watch for: Are parameters intuitive without reading documentation?",
+            "Watch for: Are results easy to interpret?",
+            "Watch for: Do error messages help the user recover?",
+            "Watch for: Can tools be combined for multi-step analysis?",
+        ],
+        max_rounds=50,
     )
 
 
@@ -107,6 +132,11 @@ def main():
         help="Clear saved state and start fresh",
     )
     parser.add_argument(
+        "--explore",
+        action="store_true",
+        help="Ignore configured scenarios and run in free exploration mode",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable debug logging",
@@ -133,9 +163,9 @@ def main():
 
     config = build_orchestrator_config(raw_config)
 
-    if not config.scenarios:
-        print("No scenarios configured. Add scenario files to config.yaml.", file=sys.stderr)
-        sys.exit(1)
+    if args.explore or not config.scenarios:
+        config.scenarios = [free_exploration_scenario()]
+        print("Running in free exploration mode.", file=sys.stderr)
 
     orch = Orchestrator(config)
 

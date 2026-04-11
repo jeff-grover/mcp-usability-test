@@ -31,9 +31,16 @@ Traditional testing checks whether tools *work*. This checks whether they're *us
 
 ### Conversation flow (per round)
 
-1. **Tester turn** — Given scenario goals and the recent tool interaction transcript, the Tester issues a task to the User and optionally writes `[OBSERVATION]` blocks.
+1. **Tester turn** — Given scenario goals and the recent tool interaction transcript, the Tester issues a task to the User and optionally records observations.
 2. **User turn (inner loop)** — The User works toward the goal, calling MCP tools as needed. The loop continues until no more tool calls or a max iteration limit is reached.
 3. **Observation checkpoint** (every N rounds) — The Tester gets a dedicated prompt to review the full recent transcript and write detailed observations.
+
+### Termination
+
+Scenarios end when one of these conditions is met:
+- **Goal completion** — If `eval_goals` are defined, the scenario ends when all goals are marked done by the Tester.
+- **Session end signal** — The Tester signals wrap-up (e.g., "Session Concluded") and the orchestrator detects it.
+- **Max rounds** — Safety cap to prevent runaway sessions (configurable per scenario).
 
 ## Requirements
 
@@ -48,10 +55,9 @@ Traditional testing checks whether tools *work*. This checks whether they're *us
 # Clone and install
 git clone <repo-url>
 cd mcp-usability-test
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e .
-
-# Or install dependencies directly
-pip install openai mcp pyyaml tiktoken rich
 ```
 
 ## Configuration
@@ -87,6 +93,7 @@ orchestrator:
   result_truncation: 8000    # Max chars per tool result
 
 scenarios:
+  - scenarios/ab_test_analysis.yaml
   - scenarios/basic_exploration.yaml
   - scenarios/store_comparison.yaml
   - scenarios/error_recovery.yaml
@@ -120,6 +127,12 @@ python -m src.main --resume
 # Clear saved state and start over
 python -m src.main --fresh
 
+# Free exploration mode (ignore configured scenarios, systematically test all tools)
+python -m src.main --explore
+
+# Combine flags
+python -m src.main --explore --fresh
+
 # Verbose logging (also written to harness.log)
 python -m src.main -v
 
@@ -144,50 +157,97 @@ The terminal shows a live color-coded conversation:
 Scenarios are YAML files that define what the Tester directs the User to do:
 
 ```yaml
-name: "Store Performance Comparison"
-description: "Test the workflow for comparing metrics across two stores"
+name: "A/B Test Result Analysis"
+description: "Evaluate whether the tools effectively support A/B test analysis"
 persona: >
-  You are a regional marketing manager who needs to compare Q4 performance
-  between two store locations.
+  You are a marketing analyst at a regional grocery chain. Your manager wants
+  a summary of recent in-store test performance for the quarterly review.
+
+# General exploration goals (used for broad guidance)
 goals:
-  - "Find and compare sales metrics for two different store locations"
-  - "Identify which store had better foot traffic conversion"
+  - "Discover the available analytics tools and understand the data model"
+  - "Retrieve and interpret A/B test results"
+
+# Evaluation goals with concrete tasks and completion tracking
+eval_goals:
+  - id: "find_active_tests"
+    task: "Find all marketing tests currently running or recently completed"
+    success_hint: "User discovers tests via search_tests or get_site_tests"
+  - id: "test_summary"
+    task: "Get detailed results for a specific test including sales lift"
+    success_hint: "User retrieves test-level results with lift metrics"
+  - id: "store_level_results"
+    task: "Find per-store performance for a multi-store test"
+    success_hint: "User gets store-level breakdowns within a test"
+
 tester_focus:
-  - "Watch for: Does the User need multiple tool calls when one should suffice?"
-  - "Watch for: Are error messages helpful when store names don't match exactly?"
-max_rounds: 20
+  - "Watch for: Are test result metrics clearly labeled and interpretable?"
+  - "Watch for: Can the user navigate from clients to sites to tests to results?"
+
+max_rounds: 35
 ```
 
-Three scenarios are included:
+### Evaluation goals
+
+When `eval_goals` are defined, the Tester tracks them explicitly:
+
+- Each goal has an `id`, a `task` description, and an optional `success_hint`
+- The Tester assigns goals one at a time and marks them done with `GOAL DONE: <goal_id>`
+- The scenario ends automatically when all goals are complete
+- `max_rounds` serves as a safety cap; if hit, incomplete goals are reported
+- Goal status (pending/completed) is injected into the Tester's context each round
+
+If `eval_goals` is omitted, the scenario runs for `max_rounds` using the general `goals` for guidance (original behavior).
+
+### Included scenarios
+
+- `ab_test_analysis.yaml` — Concrete A/B test analysis tasks with eval_goals
 - `basic_exploration.yaml` — Tool discovery and first-use experience
 - `store_comparison.yaml` — Multi-tool workflows and data comparison
 - `error_recovery.yaml` — Error handling, typos, and edge cases
 
 Add your own by creating a new YAML file and adding it to the `scenarios` list in `config.yaml`.
 
+### Free exploration mode
+
+When no scenarios are configured or the `--explore` flag is passed, the harness runs in **free exploration mode**. The Tester systematically walks the User through every available tool:
+
+1. Lists all available tools and asks the User to describe each one
+2. Tests each tool individually with reasonable inputs
+3. Probes whether parameters are clear, results are interpretable, and errors are helpful
+4. Attempts multi-tool workflows to test tool composability
+5. Continues until all tools have been exercised
+
+This is useful for initial assessment of an unfamiliar MCP server.
+
 ## Output
 
 ### Observations (`observations/`)
 
-Structured markdown files with timestamped observations:
+Structured markdown files with timestamped observations. The harness supports multiple observation formats for reliability with smaller LLMs:
 
-```markdown
-## Observation #3
-
-- **Time**: 2026-04-10T20:15:33
-- **Scenario**: Store Performance Comparison
-- **Round**: 5
-- **Category**: tool-naming
-- **Severity**: minor
-- **Tool**: get_store_perf_metrics
-
-The User tried "performance" before finding the correct tool name "perf_metrics".
-Consider using the full word to improve discoverability.
+**Single-line format** (preferred — most reliable with small models):
+```
+OBS: [major] [tool-naming] The search_tests tool name suggests text search but requires integer IDs
 ```
 
-Categories: `tool-naming`, `parameter-clarity`, `error-messages`, `workflow-efficiency`, `missing-capability`, `data-format`, `documentation`, `discoverability`
+**Block format** (more detailed):
+```
+[OBSERVATION]
+category: tool-naming
+severity: major
+tool: search_tests
+description: The tool name suggests text search but requires integer IDs
+[/OBSERVATION]
+```
 
-Severities: `critical`, `major`, `minor`, `suggestion`
+**Numbered list format** (used in observation checkpoints):
+```
+1. [major] The search_tests tool requires integer IDs but users try string names.
+2. [minor] Error messages don't suggest alternative inputs.
+```
+
+All formats are automatically parsed. Categories: `tool-naming`, `parameter-clarity`, `error-messages`, `workflow-efficiency`, `missing-capability`, `data-format`, `documentation`, `discoverability`. Severities: `critical`, `major`, `minor`, `suggestion`.
 
 ### Transcript (`state/transcript.jsonl`)
 
@@ -195,7 +255,7 @@ Append-only JSONL file with every message, tool call, and result — timestamped
 
 ### Session state (`state/session.json`)
 
-Current session state for resumability. Includes message windows, summaries, and scenario progress.
+Current session state for resumability. Includes message windows, summaries, scenario progress, and completed goal tracking.
 
 ## Context window management
 
@@ -223,6 +283,6 @@ mcp-usability-test/
 │   ├── display.py             # Rich terminal UI
 │   └── prompts.py             # System prompts for both agents
 ├── scenarios/                 # Test scenario definitions
-├── observations/              # Output (generated)
-└── state/                     # Session state (generated)
+├── observations/              # Output (generated, gitignored)
+└── state/                     # Session state (generated, gitignored)
 ```

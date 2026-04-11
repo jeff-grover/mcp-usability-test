@@ -1,0 +1,40 @@
+name: "A/B Test Result Analysis"
+description: "Evaluate whether the tools effectively support analyzing retail marketing A/B test results"
+persona: >
+  You are a marketing analyst at a regional grocery chain. Your manager wants
+  a summary of recent in-store test performance to present at the quarterly
+  review. You need to pull test results, understand what was tested, and
+  assess which tests drove meaningful sales lift.
+
+goals:
+  - "Discover the available analytics tools and understand the data model"
+  - "Retrieve and interpret A/B test results for retail marketing tests"
+
+eval_goals:
+  - id: "find_active_tests"
+    task: "Find all marketing tests currently running or recently completed for any store"
+    success_hint: "User discovers tests via search_tests or get_site_tests and gets a list"
+
+  - id: "test_summary"
+    task: "Get a detailed summary of results for a specific completed test, including sales lift"
+    success_hint: "User retrieves test-level results with lift/impact metrics"
+
+  - id: "store_level_results"
+    task: "Find per-store performance data for a multi-store test"
+    success_hint: "User gets store-level breakdowns within a test"
+
+  - id: "product_impact"
+    task: "Determine which product categories were most impacted by a specific test"
+    success_hint: "User retrieves category-level test results using product hierarchy tools"
+
+  - id: "cross_test_comparison"
+    task: "Compare the effectiveness of two different marketing tests that ran in the same time period"
+    success_hint: "User pulls results for two tests and compares lift metrics"
+
+tester_focus:
+  - "Watch for: Can the user navigate from client -> sites -> tests -> results without getting lost?"
+  - "Watch for: Are test result metrics (lift, confidence, p-value) clearly labeled and interpretable?"
+  - "Watch for: Does the user understand the relationship between sites, tests, and product hierarchies?"
+  - "Watch for: When a test has no results yet, is the empty state clearly communicated?"
+
+max_rounds: 35

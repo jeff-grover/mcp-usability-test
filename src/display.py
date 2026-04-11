@@ -27,7 +27,7 @@ class Display:
     def tester_message(self, text: str):
         self.console.print(
             Panel(
-                text,
+                Text(text),
                 title="[bold cyan]TESTER[/]",
                 border_style="cyan",
                 padding=(0, 1),
@@ -37,7 +37,7 @@ class Display:
     def user_message(self, text: str):
         self.console.print(
             Panel(
-                text,
+                Text(text),
                 title="[bold green]USER[/]",
                 border_style="green",
                 padding=(0, 1),
@@ -60,10 +60,10 @@ class Display:
     def tool_result(self, name: str, result: str):
         display_result = result
         if len(display_result) > 800:
-            display_result = display_result[:800] + "\n[dim]... truncated for display[/dim]"
+            display_result = display_result[:800] + "\n... truncated for display"
         self.console.print(
             Panel(
-                display_result,
+                Text(display_result),
                 title=f"[bold bright_black]RESULT: {name}[/]",
                 border_style="bright_black",
                 padding=(0, 1),
@@ -74,7 +74,7 @@ class Display:
         label = f"{severity.upper()} | {category}"
         self.console.print(
             Panel(
-                description,
+                Text(description),
                 title=f"[bold magenta]OBSERVATION: {label}[/]",
                 border_style="magenta",
                 padding=(0, 1),

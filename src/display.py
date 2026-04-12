@@ -83,8 +83,13 @@ class Display:
 
     def progress(self, line: str):
         """Compact per-round progress line, e.g.
-        '[scenario 3/11 | goals 2/5 | round 7/35]'."""
-        self.console.print(f"[bold bright_black]  ⟳ {line}[/]")
+        '[scenario 3/11 | goals 2/5 | round 7/35]'.
+
+        Uses Text rather than a markup format string because the line itself
+        starts with a literal '[' that rich would otherwise try to parse as a
+        style tag, silently swallowing the content.
+        """
+        self.console.print(Text(f"  ⟳ {line}", style="bold bright_black"))
 
     def status(self, message: str):
         self.console.print(f"[dim]  ▸ {message}[/dim]")

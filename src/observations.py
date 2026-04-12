@@ -113,9 +113,24 @@ def strip_observations(text: str) -> str:
     return result.strip()
 
 
+_GOAL_ID_DECORATION = "[](){}<>*_`\"'.,;:!?\\/"
+
+
+def _clean_goal_id(raw: str) -> str:
+    """Strip markdown/markup decoration that LLMs sometimes wrap IDs in.
+
+    Handles common cases like '[goal_id]', '**goal_id**', '`goal_id`',
+    'goal_id.' — the regex captures \\S+ so the decoration ends up inside
+    the match and must be removed before comparing to canonical IDs.
+    """
+    return raw.strip(_GOAL_ID_DECORATION)
+
+
 def parse_goal_completions(text: str) -> list[str]:
-    """Extract completed goal IDs from GOAL DONE: markers."""
-    return GOAL_DONE_PATTERN.findall(text)
+    """Extract completed goal IDs from GOAL DONE: markers, cleaning any
+    surrounding markdown decoration (brackets, asterisks, backticks, etc.)."""
+    cleaned = [_clean_goal_id(r) for r in GOAL_DONE_PATTERN.findall(text)]
+    return [c for c in cleaned if c]
 
 
 def strip_goal_markers(text: str) -> str:

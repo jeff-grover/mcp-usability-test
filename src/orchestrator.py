@@ -179,6 +179,10 @@ class Orchestrator:
             if is_exploration:
                 self._update_exploration_phase()
 
+            self.display.progress(
+                self._build_progress_line(scenario, is_exploration)
+            )
+
             # Snapshot goal-completion count BEFORE the tester turn,
             # since _tester_turn is where GOAL DONE markers get parsed.
             completed_count_before = len(self._state.completed_goals)
@@ -516,6 +520,55 @@ class Orchestrator:
                 "do not write closing remarks."
             )
         return "\n".join(lines)
+
+    def _build_progress_line(self, scenario: Scenario, is_exploration: bool) -> str:
+        """Compact per-round status line printed under the banner.
+
+        Scenario mode:   [scenario 3/11 | goals 2/5 | round 7/35]
+        Exploration:     [phase Combinations 4/15 | tools 12/15 | dim Tests 2/4 | round 42]
+        """
+        parts: list[str] = []
+
+        if is_exploration:
+            phase = self._state.exploration_phase
+            if phase == "Coverage":
+                parts.append(f"phase {phase}")
+            else:
+                phase_pos = self._state.exploration_phase_round + 1
+                parts.append(f"phase {phase} {phase_pos}/{self._PHASE_ROUND_BUDGET}")
+
+            total_tools = len(self._tools)
+            called_tools = len(
+                [t for t in self._state.tools_called if t]
+            )
+            parts.append(f"tools {called_tools}/{total_tools}")
+
+            dim = self._current_dimension()
+            if dim:
+                dim_pos = self._state.dimension_round + 1
+                parts.append(
+                    f"dim {dim['name']} {dim_pos}/{self._DIMENSION_ROTATION_ROUNDS}"
+                )
+
+            parts.append(f"round {self._state.round_num + 1}")
+        else:
+            total_scenarios = len(self.config.scenarios)
+            scen_pos = self._state.scenario_index + 1
+            parts.append(f"scenario {scen_pos}/{total_scenarios}")
+
+            if scenario.eval_goals:
+                total_goals = len(scenario.eval_goals)
+                done_goals = len(
+                    [g for g in scenario.eval_goals
+                     if g["id"] in self._state.completed_goals]
+                )
+                parts.append(f"goals {done_goals}/{total_goals}")
+
+            parts.append(
+                f"round {self._state.round_num + 1}/{scenario.max_rounds}"
+            )
+
+        return "[" + " | ".join(parts) + "]"
 
     def _build_variety_hint(self) -> str | None:
         """Pick a dimension for this round to steer the Tester toward variety.

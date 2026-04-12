@@ -81,6 +81,11 @@ class Display:
             )
         )
 
+    def progress(self, line: str):
+        """Compact per-round progress line, e.g.
+        '[scenario 3/11 | goals 2/5 | round 7/35]'."""
+        self.console.print(f"[bold bright_black]  ⟳ {line}[/]")
+
     def status(self, message: str):
         self.console.print(f"[dim]  ▸ {message}[/dim]")
 

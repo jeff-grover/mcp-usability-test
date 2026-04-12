@@ -1,0 +1,42 @@
+name: "What's Driving the Lift?"
+description: "Test the workflow for drilling into lift by category, brand, and customer type — and stress-test how the AI handles the tricky 'lifts don't add up' question. A top question from clients like DSG, Casey's, and Meijer"
+persona: >
+  You are a category manager at a large retailer. A recent in-store test
+  on energy drinks showed a positive overall sales lift. Leadership wants to
+  know which brands and sub-categories drove the gain. They've also noticed
+  that when they look at the individual brand results, the lifts don't seem
+  to add up to the overall number, and they want to understand why.
+
+eval_goals:
+  - id: "find_completed_test"
+    task: "Find a recently completed test with positive sales lift"
+    success_hint: "User uses get_test_list or search_tests to find a COMPLETE test, then get_test_summary to confirm positive lift"
+
+  - id: "check_explorers"
+    task: "Check whether any lift explorers exist for this test that break down results by category or brand"
+    success_hint: "User calls list_lift_explorers for the test ID"
+
+  - id: "category_breakdown"
+    task: "If a lift explorer exists, retrieve the category-level or brand-level breakdown of lift"
+    success_hint: "User calls get_lift_explorer with the explorer ID and interprets category/brand-level results"
+
+  - id: "product_hierarchy"
+    task: "Explore the product hierarchy to understand what categories are being measured in the test"
+    success_hint: "User uses get_test_products or get_hierarchy or search_products to understand the product tree"
+
+  - id: "lifts_dont_add_up"
+    task: "Explain why individual category/brand lifts don't sum to the overall test lift"
+    success_hint: "User explains that sub-category lifts are calculated independently against their own baselines, so they don't arithmetically sum to the parent — this is expected behavior, not an error"
+
+  - id: "spillover_check"
+    task: "Determine whether the test had spillover effects — did untested product categories also see a lift?"
+    success_hint: "User examines is_direct_category=false results to find all-product lift vs direct-product lift"
+
+tester_focus:
+  - "Watch for: Does the user understand the difference between direct category results and all-product (spillover) results?"
+  - "Watch for: Is it intuitive to go from test results → lift explorer → category breakdown?"
+  - "Watch for: Does the user handle the 'lifts don't add up' question accurately, or does it criticize the methodology?"
+  - "Watch for: Does the AI hallucinate explanations or correctly explain that sub-category lifts have independent baselines?"
+  - "Watch for: If no lift explorer exists, does the user know to suggest creating one in the app?"
+
+max_rounds: 30

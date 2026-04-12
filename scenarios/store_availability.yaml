@@ -1,0 +1,38 @@
+name: "Store Availability & Test Overlap"
+description: "Test the workflow for determining which stores are available for a new test — checking test history, overlap with concurrent tests, and fleet status. A major pain point for Casey's (400+ store tests causing availability conflicts) and DSG"
+persona: >
+  You are a test program manager responsible for coordinating multiple concurrent
+  in-store tests across a large fleet. You need to plan a new test but must
+  avoid stores already involved in other active tests, check which stores
+  have adequate history, and understand the current fleet status. You've been
+  told some stores recently closed and others recently opened.
+
+eval_goals:
+  - id: "fleet_overview"
+    task: "Get an overview of the store fleet — how many stores are active, closed, testable"
+    success_hint: "User calls get_sites without filters to get the overview counts by status and testability"
+
+  - id: "check_store_history"
+    task: "For a specific store, check what tests it has been involved in recently"
+    success_hint: "User calls get_site_tests with a client_site_id and reviews the test history"
+
+  - id: "find_active_tests"
+    task: "Find all currently in-progress tests to understand what stores are occupied"
+    success_hint: "User uses get_test_list or search_tests filtered to IN_PROGRESS status"
+
+  - id: "test_store_overlap"
+    task: "For a specific active test, find out which stores are in it as treatment or control"
+    success_hint: "User calls get_test_sites for the test ID and sees treatment/control breakdown"
+
+  - id: "regional_availability"
+    task: "Find testable stores in a specific state or market that are not currently in any test"
+    success_hint: "User combines get_sites with state/market filter and cross-references with active test stores"
+
+tester_focus:
+  - "Watch for: Can the user easily determine if a store is 'available' for a new test?"
+  - "Watch for: Is the relationship between site status (ACTIVE/CLOSED/NEW) and testability clear?"
+  - "Watch for: How many tool calls does it take to answer 'which stores can I use for my next test?'"
+  - "Watch for: Is the overlap between get_sites, get_site_tests, and get_test_sites intuitive or confusing?"
+  - "Watch for: Does the overview mode of get_sites actually help the user decide how to filter?"
+
+max_rounds: 30

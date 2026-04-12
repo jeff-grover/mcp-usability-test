@@ -1,0 +1,43 @@
+name: "Test Portfolio Monitoring"
+description: "Test the workflow for getting a portfolio-level view of all active and recent tests — which are significant, which are ending soon, which need attention. A common need for testing program managers at Casey's and DSG who manage dozens of concurrent tests"
+persona: >
+  You are a testing program manager who oversees 15-20 concurrent in-store
+  tests across the chain. You check in weekly to see which tests are showing
+  results, which are ending soon and need attention, and whether any are
+  underperforming. You need a dashboard-level view across all your tests,
+  not deep-dives into individual ones.
+
+eval_goals:
+  - id: "active_test_overview"
+    task: "Get a list of all currently in-progress tests with their status"
+    success_hint: "User calls get_test_list or search_tests filtered to IN_PROGRESS test_status"
+
+  - id: "significant_active_tests"
+    task: "Among active tests, identify which ones are already showing statistically significant results"
+    success_hint: "User gets summaries for active tests and identifies those with confidence >= 95%"
+
+  - id: "tests_ending_soon"
+    task: "Find tests that are ending within the next 2-4 weeks that need final review"
+    success_hint: "User uses get_test_list with test_end_date field and identifies upcoming end dates"
+
+  - id: "helping_vs_hurting"
+    task: "For a specific active test, determine whether it is currently helping or hurting — is the lift positive or negative, and is the signal strong enough to trust?"
+    success_hint: "User checks both lift direction and confidence level, and qualifies the answer based on statistical strength"
+
+  - id: "compare_similar_tests"
+    task: "Compare two or more tests that are testing similar things (e.g., different versions of a merchandising change) and determine which version is winning"
+    success_hint: "User pulls summaries for comparable tests and compares lift metrics, noting differences in store count, test length, and confidence"
+
+  - id: "program_value"
+    task: "Estimate the overall value of the testing program — how much incremental revenue have significant test wins generated?"
+    success_hint: "User sums numeric_lift (dollar impact) across significant completed tests to estimate aggregate value"
+
+tester_focus:
+  - "Watch for: How efficiently can the user get a portfolio view — is it too many tool calls per test?"
+  - "Watch for: Can the user filter or sort tests by significance without manually checking each one?"
+  - "Watch for: Does the user correctly distinguish between 'currently showing significance' and 'will be significant when complete'?"
+  - "Watch for: Is comparing across tests straightforward, or does the user struggle with different metrics/formats?"
+  - "Watch for: Can the user estimate aggregate program value, or is that data too fragmented across tools?"
+  - "Watch for: Would a 'portfolio summary' tool that pre-aggregates across tests be valuable?"
+
+max_rounds: 35

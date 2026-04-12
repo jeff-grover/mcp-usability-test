@@ -1,0 +1,34 @@
+name: "Post-Rollout Performance Tracking"
+description: "Test the workflow for evaluating performance after a change has been rolled out to all stores — using year-over-year difference-in-differences analysis. Raised by Love's (hot food recall analysis), DSG, and Wingstop (phased rollouts)"
+persona: >
+  You are a senior analyst. A pricing change was rolled out to all stores
+  three months ago after a successful A/B test. Leadership wants to know
+  if the rollout is performing as expected compared to the same period
+  last year. Since there are no control stores anymore, you need to use
+  year-over-year comparison methods.
+
+eval_goals:
+  - id: "find_rollout_analyses"
+    task: "Find any existing rollout analyses that have been created"
+    success_hint: "User calls list_analyses to see what rollout analyses exist"
+
+  - id: "review_config"
+    task: "Review the configuration of a rollout analysis — what products, dates, and measurement window were used"
+    success_hint: "User calls get_analysis_config with an analysis ID"
+
+  - id: "connect_to_test"
+    task: "Find the original A/B test that preceded this rollout to compare the test lift with the rollout lift"
+    success_hint: "User searches for the related test, gets its summary, and compares with rollout analysis results"
+
+  - id: "understand_methodology"
+    task: "Explain the methodology used in the rollout analysis and its limitations compared to the A/B test"
+    success_hint: "User articulates that rollout uses YoY DiD, has lower confidence than A/B tests, and is vulnerable to confounders"
+
+tester_focus:
+  - "Watch for: Does the user understand why rollout analysis methodology differs from A/B testing?"
+  - "Watch for: Is it clear from the tool output that confidence is typically lower for rollout analyses?"
+  - "Watch for: Can the user find the original A/B test that led to the rollout?"
+  - "Watch for: Does the user understand the caveats (seasonality, confounders) of YoY comparison?"
+  - "Watch for: Is the connection between a test's rollout group tags and the rollout analysis clear?"
+
+max_rounds: 25

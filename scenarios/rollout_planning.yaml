@@ -1,0 +1,38 @@
+name: "Rollout Planning & Prediction"
+description: "Test the workflow for deciding where and how to roll out a successful test — using impact prediction to identify which stores will benefit most, a key ask from DSG, Casey's, and Fullspeed"
+persona: >
+  You are a director of operations at a retail chain. A recent A/B test showed
+  a statistically significant sales lift, and you've been asked to recommend
+  which stores should adopt the change. Not every store may benefit equally,
+  and leadership wants a data-driven rollout recommendation rather than
+  a blanket deployment.
+
+eval_goals:
+  - id: "find_successful_test"
+    task: "Find a completed test with statistically significant positive results"
+    success_hint: "User finds a COMPLETE test with high confidence and positive lift via get_test_list + get_test_summary"
+
+  - id: "review_test_design"
+    task: "Understand the test design — how many treatment vs control stores, what was being tested"
+    success_hint: "User calls get_test_sites and get_test_products to understand the test setup"
+
+  - id: "store_pair_analysis"
+    task: "Review store pair performance to see if the lift was consistent across locations or concentrated in a few"
+    success_hint: "User calls get_site_pairs to see pair-level lift variation and comparability scores"
+
+  - id: "impact_prediction"
+    task: "Use the impact analyzer to predict which stores in the rollout group would benefit most from deployment"
+    success_hint: "User calls get_prediction_table to get per-store rollout predictions with confidence intervals"
+
+  - id: "optimized_vs_full"
+    task: "Compare the optimized rollout (excluding predicted-negative stores) against the full rollout projection"
+    success_hint: "User interprets optimized rollout vs full rollout results from the prediction table"
+
+tester_focus:
+  - "Watch for: Does the user understand the difference between the test group and the rollout group?"
+  - "Watch for: Is the impact prediction output clear — does the user understand predicted lift per store?"
+  - "Watch for: Does the user notice the model warning if site attributes don't correlate with lift?"
+  - "Watch for: Can the user navigate from test results → prediction without getting lost?"
+  - "Watch for: Are confidence intervals on predictions interpretable?"
+
+max_rounds: 30

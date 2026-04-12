@@ -1,0 +1,48 @@
+name: "Interpreting Test Results & Metric Contradictions"
+description: "Test whether the tools help a user understand statistical results, explain metric contradictions (units up but sales down), diagnose low confidence, and communicate findings honestly. Pain points from Casey's, DSG, and Five Below"
+persona: >
+  You are a marketing analyst preparing a summary of several recent tests for
+  a quarterly business review. Some tests showed positive lift but low
+  confidence, others showed high confidence but small lift. One test shows
+  units up but revenue down, which is confusing. Your VP is not statistically
+  literate and tends to treat any positive number as a win. You need to
+  correctly interpret the results and present them honestly.
+
+eval_goals:
+  - id: "find_recent_tests"
+    task: "Find 3-5 recently completed tests to review for the quarterly summary"
+    success_hint: "User uses get_test_list with status=COMPLETE and since filter to find recent tests"
+
+  - id: "summarize_results"
+    task: "Get the summary results for each test — lift percentage, confidence, and significance"
+    success_hint: "User calls get_test_summary for multiple tests and extracts lift/confidence"
+
+  - id: "significant_vs_not"
+    task: "Identify which tests achieved statistical significance and which did not"
+    success_hint: "User correctly interprets confidence >= 95% as significant and flags low-confidence results as inconclusive"
+
+  - id: "low_confidence_diagnosis"
+    task: "For a test with low confidence, explain why confidence is low and what factors affect it (store count, test length, effect size)"
+    success_hint: "User explains that low confidence can result from too few stores, too short a test, or a small effect — and that there's nothing to do retroactively to fix it"
+
+  - id: "metric_contradiction"
+    task: "Find a test where one metric (e.g., units or transactions) is positive but another (e.g., revenue) is negative or flat, and explain why this can happen"
+    success_hint: "User examines multiple metrics from get_test_summary or get_test_results and articulates a plausible explanation (e.g., more units sold at lower price points, mix shift, promotional discounting)"
+
+  - id: "outlier_investigation"
+    task: "For a test with surprising results, check if outlier store pairs might be skewing the overall number"
+    success_hint: "User calls get_site_pairs to examine individual pair performance and identifies outliers"
+
+  - id: "custom_chart_check"
+    task: "Check if anyone has created custom charts for any of these tests — alternate views that might tell a different story"
+    success_hint: "User calls list_test_charts and optionally retrieves custom chart results"
+
+tester_focus:
+  - "Watch for: Does the user understand what confidence percentage means? Do they confuse it with lift?"
+  - "Watch for: Are the metrics clearly labeled in tool output — is it obvious which number is lift vs confidence?"
+  - "Watch for: Can the user explain why two metrics might move in opposite directions?"
+  - "Watch for: Does the user give accurate advice about improving confidence, or does it hallucinate interventions?"
+  - "Watch for: Can the user identify outlier pairs that may be distorting overall results?"
+  - "Watch for: Does the user know that custom charts exist and can supplement the parent test result?"
+
+max_rounds: 35

@@ -1,0 +1,43 @@
+name: "Leadership Preparation & Reporting"
+description: "Test the end-to-end workflow of preparing for a leadership presentation — pulling test results, anticipating tough questions, identifying wins, and building a narrative. Inspired by DSG's FP&A reviews, Casey's quarterly reporting, and the common ask 'what will they ask me?'"
+persona: >
+  You are a marketing analyst who has been asked to present your testing
+  program results to the executive team next week. You need to identify
+  your biggest wins, prepare a coherent summary, and anticipate the
+  questions leadership will ask — especially about tradeoffs, impacts on
+  other parts of the business, and whether results justify rollout investment.
+
+eval_goals:
+  - id: "find_top_wins"
+    task: "Identify the 2-3 biggest test wins this year — tests with the highest significant lift"
+    success_hint: "User searches recent completed tests, gets summaries, and ranks by lift among significant results"
+
+  - id: "build_summary"
+    task: "For the top-performing test, gather a complete summary — what was tested, where, headline results, and category breakdown"
+    success_hint: "User calls get_test_products, get_test_sites, get_test_summary, and optionally lift explorer for a complete picture"
+
+  - id: "anticipate_questions"
+    task: "For the top test, identify what tough questions leadership might ask — impact on transactions, customer behavior, spillover effects, sustainability of lift"
+    success_hint: "User examines multiple metrics (revenue, transactions, units, basket size), checks all-product vs direct results for spillover, and considers whether lift is sustainable"
+
+  - id: "ecommerce_channel_shift"
+    task: "Check whether a test that lifted in-store sales had any impact on ecommerce — are we just shifting sales between channels?"
+    success_hint: "User looks for ecommerce-related metrics or all-product spillover results to assess channel cannibalization"
+
+  - id: "historical_precedent"
+    task: "Check if similar tests have been run before — have we tried anything like this test before and what happened?"
+    success_hint: "User uses search_tests with relevant keywords to find historical tests on similar products/categories and compares their results"
+
+  - id: "rollout_recommendation"
+    task: "Based on all the data gathered, make a rollout recommendation with caveats"
+    success_hint: "User synthesizes findings, checks prediction table if available, and provides a clear recommendation with supporting evidence"
+
+tester_focus:
+  - "Watch for: How many total tool calls does it take to prepare a leadership-ready summary?"
+  - "Watch for: Can the user connect data across tools to build a narrative (store IDs to names, product IDs to categories)?"
+  - "Watch for: Does the user proactively check for channel shift / spillover, or only when prompted?"
+  - "Watch for: Can the user find historical precedent tests, or is search too limited?"
+  - "Watch for: Does the user give sound strategic advice, or does it overclaim based on the data?"
+  - "Watch for: Would a single 'executive briefing' tool be more efficient than the current multi-tool workflow?"
+
+max_rounds: 40

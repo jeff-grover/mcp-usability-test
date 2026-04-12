@@ -26,7 +26,16 @@ orchestrator:
   result_truncation: 8000       # max chars per tool result
 
 scenarios:
+  # Core analysis workflows (eval_goals-based)
   - scenarios/ab_test_analysis.yaml
+  - scenarios/lift_drivers.yaml
+  - scenarios/result_interpretation.yaml
+  - scenarios/rollout_planning.yaml
+  - scenarios/store_availability.yaml
+  - scenarios/rollout_analysis.yaml
+  - scenarios/stakeholder_report.yaml
+  - scenarios/portfolio_monitoring.yaml
+  # General exploration (goals-based, no eval tracking)
   - scenarios/basic_exploration.yaml
   - scenarios/store_comparison.yaml
   - scenarios/error_recovery.yaml

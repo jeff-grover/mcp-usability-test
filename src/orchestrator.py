@@ -197,7 +197,7 @@ class Orchestrator:
                 break
 
             # Phase 2: User works with tools
-            await self._user_turn(tester_response)
+            await self._user_turn(tester_response, scenario)
 
             # Phase 3: Periodic deep observation
             if (round_num + 1) % self.config.observation_interval == 0:
@@ -346,7 +346,7 @@ class Orchestrator:
 
         return user_facing
 
-    async def _user_turn(self, tester_instruction: str):
+    async def _user_turn(self, tester_instruction: str, scenario: Scenario):
         """Have the User agent work toward the task, calling tools as needed."""
         self._state.user_messages.append({
             "role": "user",
@@ -392,8 +392,16 @@ class Orchestrator:
                     if tc.name not in self._state.tools_called:
                         self._state.tools_called.append(tc.name)
 
-                    result = await self.mcp.call_tool(tc.name, tc.arguments)
-                    result = self.user_ctx.truncate_tool_result(result)
+                    raw_result = await self.mcp.call_tool(tc.name, tc.arguments)
+
+                    # Auto-capture tool failures as observations, before any
+                    # truncation, so post-run triage has the full args + error.
+                    if raw_result.startswith("[TOOL ERROR]"):
+                        self._record_tool_error(
+                            tc.name, tc.arguments, raw_result, scenario
+                        )
+
+                    result = self.user_ctx.truncate_tool_result(raw_result)
 
                     self.display.tool_result(tc.name, result)
 
@@ -628,6 +636,69 @@ class Orchestrator:
             ),
         })
         self.display.info(f"Stall nudge: forcing advance warning on '{target}'")
+
+    _TOOL_ERROR_MAX_CHARS = 4000
+
+    def _record_tool_error(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+        raw_result: str,
+        scenario: Scenario,
+    ):
+        """Auto-write a tool-error observation when an MCP call fails.
+
+        The bridge prepends '[TOOL ERROR]' to every failed call (both
+        result.isError and exceptions), which is the sentinel we trigger on.
+        We capture the *pre-truncation* raw result so post-run triage always
+        has the full error response, even if the LLM-facing context was
+        truncated for token budget reasons.
+        """
+        from .observations import Observation
+
+        err_text = raw_result
+        if len(err_text) > self._TOOL_ERROR_MAX_CHARS:
+            err_text = (
+                err_text[: self._TOOL_ERROR_MAX_CHARS]
+                + f"\n… (truncated at {self._TOOL_ERROR_MAX_CHARS} chars)"
+            )
+
+        try:
+            args_json = json.dumps(arguments, indent=2, default=str)
+        except (TypeError, ValueError):
+            args_json = repr(arguments)
+
+        description = (
+            "Tool call FAILED — auto-captured by the orchestrator. "
+            "Full input arguments and raw error response recorded below "
+            "for post-run triage.\n\n"
+            f"**Arguments:**\n```json\n{args_json}\n```\n\n"
+            f"**Error response:**\n```\n{err_text}\n```"
+        )
+
+        obs = Observation(
+            category="tool-error",
+            severity="major",
+            tool=tool_name,
+            description=description,
+        )
+        self.obs_writer.write_observation(
+            obs,
+            scenario=scenario.name,
+            round_num=self._state.round_num,
+        )
+        self._state.observation_count += 1
+
+        # Show a compact line on the console so the failure is visible in
+        # real-time; the full details live in the observation markdown file.
+        summary = raw_result.replace("\n", " ")
+        if len(summary) > 200:
+            summary = summary[:200] + "…"
+        self.display.observation(
+            "tool-error",
+            "major",
+            f"{tool_name} failed: {summary}",
+        )
 
     def _auto_force_advance(self, scenario: Scenario):
         """Hard force-advance: orchestrator itself marks the stalled goal DONE."""

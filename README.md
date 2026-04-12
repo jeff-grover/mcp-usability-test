@@ -555,7 +555,17 @@ description: The tool name suggests text search but requires integer IDs
 2. [minor] Error messages don't suggest alternative inputs.
 ```
 
-All formats are automatically parsed. Categories: `tool-naming`, `parameter-clarity`, `error-messages`, `workflow-efficiency`, `missing-capability`, `data-format`, `documentation`, `discoverability`. Severities: `critical`, `major`, `minor`, `suggestion`.
+All formats are automatically parsed. Categories: `tool-naming`, `parameter-clarity`, `error-messages`, `workflow-efficiency`, `missing-capability`, `data-format`, `documentation`, `discoverability`, `tool-error`. Severities: `critical`, `major`, `minor`, `suggestion`.
+
+### Auto-captured tool errors
+
+When an MCP tool call actually fails (the bridge prepends `[TOOL ERROR]` to any response where `result.isError` is true or an exception escapes), the orchestrator automatically writes a structured `tool-error` observation containing:
+
+- the tool name
+- the full input arguments (as formatted JSON)
+- the complete raw error response, captured **before** any result truncation for the LLM's context window — so even if the error message is larger than `result_truncation`, the observation file still has the whole thing (capped at 4000 chars with a "truncated" marker to keep the observations file sane)
+
+This runs in parallel with the Tester's own observations — it guarantees the raw forensic data is always captured even when the Tester LLM forgets to comment, and it shows up as a magenta panel on the console in real time so you see failures as they happen. If you want to grep the observations file for every MCP-server bug the run surfaced: `grep -c 'Category: tool-error' observations/session_*.md`.
 
 ### Transcript (`state/transcript.jsonl`)
 

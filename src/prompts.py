@@ -203,7 +203,9 @@ When you notice a usability issue, write it on its own line using this format:
 OBS: [severity] [category] description of the issue with specific details
 
 Severity: critical, major, minor, suggestion
-Category: tool-naming, parameter-clarity, error-messages, workflow-efficiency, missing-capability, data-format, documentation, discoverability
+Category: tool-naming, parameter-clarity, error-messages, workflow-efficiency, missing-capability, data-format, documentation, discoverability, tool-error
+
+Note: when an MCP tool call actually fails (the result starts with "[TOOL ERROR]"), the orchestrator automatically records a structured `tool-error` observation containing the arguments and full error response. You do not need to duplicate that raw data — but you should still add your own analysis observation using the same `tool-error` category if the failure reveals a usability problem (e.g. a confusing error message, a misleading parameter name, a missing capability).
 
 Example:
 OBS: [major] [tool-naming] The search_tests tool name suggests text search but requires integer IDs

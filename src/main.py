@@ -10,6 +10,8 @@ from pathlib import Path
 
 import yaml
 
+from typing import Any
+
 from .llm_client import LLMConfig
 from .mcp_bridge import MCPConfig
 from .orchestrator import Orchestrator, OrchestratorConfig, Scenario
@@ -36,6 +38,47 @@ def load_scenario(path: str) -> Scenario:
     )
 
 
+def _normalize_dimensions(raw: Any) -> list[dict[str, str]]:
+    """Accept a list of strings or {name, description} dicts; return list of dicts."""
+    if not raw:
+        return []
+    if not isinstance(raw, list):
+        raise ValueError(
+            f"exploration_dimensions must be a list, got {type(raw).__name__}"
+        )
+    out: list[dict[str, str]] = []
+    for item in raw:
+        if isinstance(item, str):
+            out.append({"name": item, "description": ""})
+        elif isinstance(item, dict) and "name" in item:
+            out.append({
+                "name": str(item["name"]),
+                "description": str(item.get("description", "")),
+            })
+        else:
+            raise ValueError(
+                f"exploration_dimensions items must be strings or "
+                f"{{name, description}} dicts, got: {item!r}"
+            )
+    return out
+
+
+def load_exploration_dimensions(spec: Any) -> list[dict[str, str]]:
+    """Load dimensions from either an inline list or a path to a YAML file.
+
+    A YAML file may contain a bare list or a mapping with a 'dimensions' key.
+    """
+    if spec is None:
+        return []
+    if isinstance(spec, str):
+        with open(spec) as f:
+            data = yaml.safe_load(f)
+        if isinstance(data, dict) and "dimensions" in data:
+            data = data["dimensions"]
+        return _normalize_dimensions(data)
+    return _normalize_dimensions(spec)
+
+
 def free_exploration_scenario() -> Scenario:
     """Generate a built-in scenario for systematic tool exploration."""
     return Scenario(
@@ -56,7 +99,7 @@ def free_exploration_scenario() -> Scenario:
             "Watch for: Do error messages help the user recover?",
             "Watch for: Can tools be combined for multi-step analysis?",
         ],
-        max_rounds=50,
+        max_rounds=100_000,
     )
 
 
@@ -98,6 +141,8 @@ def build_orchestrator_config(raw: dict) -> OrchestratorConfig:
         except FileNotFoundError:
             print(f"Warning: scenario file not found: {sp}", file=sys.stderr)
 
+    dimensions = load_exploration_dimensions(raw.get("exploration_dimensions"))
+
     return OrchestratorConfig(
         llm=llm,
         mcp=mcp,
@@ -109,6 +154,7 @@ def build_orchestrator_config(raw: dict) -> OrchestratorConfig:
         result_truncation=orch_raw.get("result_truncation", 8000),
         observations_dir=output_raw.get("observations_dir", "observations"),
         state_dir=output_raw.get("state_dir", "state"),
+        exploration_dimensions=dimensions,
     )
 
 
@@ -137,6 +183,14 @@ def main():
         help="Ignore configured scenarios and run in free exploration mode",
     )
     parser.add_argument(
+        "--dimensions",
+        default=None,
+        help=(
+            "Path to a YAML file listing exploration dimensions "
+            "(overrides config.yaml's exploration_dimensions)"
+        ),
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable debug logging",
@@ -163,9 +217,15 @@ def main():
 
     config = build_orchestrator_config(raw_config)
 
+    if args.dimensions:
+        config.exploration_dimensions = load_exploration_dimensions(args.dimensions)
+
     if args.explore or not config.scenarios:
         config.scenarios = [free_exploration_scenario()]
         print("Running in free exploration mode.", file=sys.stderr)
+        if config.exploration_dimensions:
+            names = ", ".join(d["name"] for d in config.exploration_dimensions)
+            print(f"Exploration dimensions: {names}", file=sys.stderr)
 
     orch = Orchestrator(config)
 

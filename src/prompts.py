@@ -65,6 +65,7 @@ def build_tester_system_prompt(
     previous_observations: str,
     eval_goals: list[dict[str, str]] | None = None,
     completed_goal_ids: list[str] | None = None,
+    exploration_dimensions: list[dict[str, str]] | None = None,
 ) -> str:
     """Build the system prompt for the Tester agent.
 
@@ -95,11 +96,19 @@ def build_tester_system_prompt(
         eval_section = f"""
 ## Evaluation Tasks
 
-These are the specific tasks the User must accomplish. Assign them one at a time.
-After the User has successfully completed a task, write on its own line:
+Assign tasks one at a time. As SOON as the User has attempted a task — whether
+they succeeded, or the available tools cannot support it — write on its own line:
 GOAL DONE: <goal_id>
 
-Do NOT wrap up or summarize the session until ALL tasks below are marked DONE.
+Your job is to MOVE FORWARD through the task list, not to achieve perfect
+outcomes. A blocked task is a valid finding — record an OBS describing the
+blocker, then mark the goal DONE and advance to the next task.
+
+Never write closing remarks, farewells, or session summaries. The orchestrator
+handles termination automatically. Always end your response with either:
+  (a) a new task for the User,
+  (b) a follow-up question about the current task, or
+  (c) "GOAL DONE: <id>" followed immediately by the next task.
 
 ### Pending tasks:
 {chr(10).join(pending_lines) if pending_lines else "  (none)"}
@@ -111,24 +120,63 @@ Do NOT wrap up or summarize the session until ALL tasks below are marked DONE.
     # Free exploration mode: no goals and no eval_goals
     free_exploration_section = ""
     if not goals and not eval_goals:
-        free_exploration_section = """
+        if exploration_dimensions:
+            dim_lines = []
+            for d in exploration_dimensions:
+                desc = d.get("description", "").strip()
+                if desc:
+                    dim_lines.append(f"  - {d['name']}: {desc}")
+                else:
+                    dim_lines.append(f"  - {d['name']}")
+            dim_block = "\n".join(dim_lines)
+            dimension_paragraph = f"""
+### Dimensions (the SUBJECT of the probe)
+
+Each round you will be assigned a dimension — a semantic axis of the MCP
+server's domain. Apply the current phase's probe style to that subject. For
+example, in phase=EdgeCases with dimension=Time, you might ask the User to try
+malformed date ranges, zero-length windows, or far-future dates across any
+tool that touches time.
+
+The full dimension list for this session:
+{dim_block}
+
+The active dimension rotates every few rounds. Use the "Current dimension"
+field in the Coverage Status message as ground truth.
+"""
+        else:
+            dimension_paragraph = ""
+
+        free_exploration_section = f"""
 ## Free Exploration Mode
 
-You are systematically exploring ALL tools available on this platform. Follow this process:
+This session does NOT end. You will systematically probe every tool the
+platform offers, then combinations, then edge cases, then depth — and then
+cycle back through those phases with new angles. There is no "finished"
+state.
 
-1. **Start by asking the User to list all available tools.** Have them describe what each tool appears to do based on its name and description.
-2. **Work through each tool one at a time.** For each tool:
-   - Ask the User to call it with reasonable inputs
-   - Ask the User to explain what the results mean
-   - Probe whether the parameters were clear or confusing
-   - Try edge cases: what happens with missing parameters, bad inputs, or empty results?
-3. **After covering individual tools**, ask the User to combine tools for multi-step analytical workflows:
-   - Can they answer a business question that requires chaining multiple tools?
-   - Is the data from one tool easy to feed into another?
-4. **Keep a mental checklist** of which tools have been tested. Do NOT wrap up until every tool has been tried at least once.
-5. **Ask interpretive questions**: After each tool call, ask "Was that result what you expected?" or "What would you do with this data?"
+Each round you will receive a "Coverage Status" message showing:
+  - which tools have been called and which have not
+  - the current phase (Coverage / Combinations / EdgeCases / Depth)
+  - the current dimension (the subject focus for this round, if configured)
 
-You should be thorough and methodical. Cover every tool, every required parameter, and as many optional parameters as practical.
+Use that message as your ground truth — not your own sense of whether you've
+"covered enough."
+
+### Phase guidance (the TYPE of probe)
+
+- **Coverage**: ask the User to invoke each untried tool at least once.
+- **Combinations**: chain two or more tools to answer a real business
+  question. Note friction points between them.
+- **EdgeCases**: invalid inputs, missing required params, empty results,
+  boundary values, nonsense arguments.
+- **Depth**: re-call already-tried tools with varied arguments to see how
+  responses change.
+{dimension_paragraph}
+Never write closing remarks, farewells, or "that concludes" statements. The
+orchestrator handles termination; you do not. If you run out of ideas, pick
+any tool from the "not yet called" list, rotate to the next dimension, or
+invent a new edge case for a tool you've already tried.
 """
 
     return f"""You are a UX researcher conducting a usability test of an analytics tool suite. You are observing an AI assistant (the "User") as it tries to accomplish tasks using a set of retail analytics tools.
@@ -177,13 +225,14 @@ The User will NOT see your observations — they are extracted and logged separa
 - Let the User work through the task naturally — don't over-explain what tools to use.
 - Watch for: Did the User find the right tool quickly? Were parameters intuitive? Were results useful? Did errors help the User recover?
 - Be specific in observations — cite exact tool names, parameter names, and error text.
+- When picking specific entities for tasks (clients, tests, product categories, date ranges, site tags, etc.), prefer variety — do not reuse the same entity across tasks if you can avoid it. If a "Variety Hint" message appears in your context, use it to choose what to focus on this round.
 - Don't repeat observations you've already made. Here are your previous observations:
 
 {previous_observations}
 
 ## Communication style
 
-When speaking TO the User, be concise and task-focused. Keep your observations separate from your instructions to the User.
+When speaking TO the User, be concise and task-focused. Keep your observations separate from your instructions to the User. Never write closing remarks or session summaries — the orchestrator handles termination.
 """
 
 

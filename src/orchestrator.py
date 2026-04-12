@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -51,6 +52,7 @@ class OrchestratorConfig:
     result_truncation: int = 8000
     observations_dir: str = "observations"
     state_dir: str = "state"
+    exploration_dimensions: list[dict[str, str]] = field(default_factory=list)
 
 
 class Orchestrator:
@@ -141,6 +143,7 @@ class Orchestrator:
             previous_observations=self.obs_writer.get_previous_summaries(),
             eval_goals=scenario.eval_goals or None,
             completed_goal_ids=self._state.completed_goals,
+            exploration_dimensions=self.config.exploration_dimensions or None,
         )
 
         # Initialize message histories (or use resumed state)
@@ -155,22 +158,38 @@ class Orchestrator:
 
         self._tool_transcript = []
         round_num = self._state.round_num
-        rounds_since_goal_completion = 0
+        rounds_without_completion = 0
+        is_exploration = not scenario.eval_goals and not scenario.goals
+        reached_max = True  # flipped False if we break early
+
+        # Pick a fresh random variety offset at the start of each scenario so
+        # the per-round dimension rotation starts on a different dimension
+        # every run. Only re-seed on a fresh scenario (round 0), not a resume.
+        if (
+            not is_exploration
+            and round_num == 0
+            and self.config.exploration_dimensions
+        ):
+            self._state.variety_offset = random.randint(0, 10_000)
 
         while round_num < scenario.max_rounds:
             self._state.round_num = round_num
             self.display.banner(scenario.name, round_num)
 
-            # Phase 1: Tester gives direction
-            tester_response = await self._tester_turn(scenario)
+            if is_exploration:
+                self._update_exploration_phase()
+
+            # Snapshot goal-completion count BEFORE the tester turn,
+            # since _tester_turn is where GOAL DONE markers get parsed.
+            completed_count_before = len(self._state.completed_goals)
+
+            # Phase 1: Tester gives direction (with pleasantry guard for exploration)
+            tester_response = await self._tester_turn_with_guard(
+                scenario, is_exploration
+            )
             if tester_response is None:
                 self.display.error("Tester produced no response, ending scenario")
-                break
-
-            # Detect tester signaling session end (e.g. "Session Concluded")
-            if self._is_session_end_signal(tester_response):
-                self.display.info("Tester signaled session end, wrapping up scenario")
-                self._save_state()
+                reached_max = False
                 break
 
             # Phase 2: User works with tools
@@ -180,45 +199,87 @@ class Orchestrator:
             if (round_num + 1) % self.config.observation_interval == 0:
                 await self._observation_checkpoint(scenario)
 
-            # Check goal-based termination
-            if scenario.eval_goals and self._all_goals_complete(scenario):
-                self.display.info("All evaluation goals completed!")
-                self._save_state()
-                break
-
-            # Nudge tester if no goals marked done after several rounds
+            # --- Scenario-mode: goal tracking and stall-breaker ---
             if scenario.eval_goals:
-                rounds_since_goal_completion += 1
-                if rounds_since_goal_completion >= 3:
-                    self._inject_goal_reminder()
-                    rounds_since_goal_completion = 0
+                new_completions = (
+                    len(self._state.completed_goals) - completed_count_before
+                )
 
-            # Save state after each round
+                if new_completions > 0:
+                    rounds_without_completion = 0
+                else:
+                    rounds_without_completion += 1
+
+                if self._all_goals_complete(scenario):
+                    self.display.info("All evaluation goals completed!")
+                    self._save_state()
+                    reached_max = False
+                    break
+
+                # Stall-breaker chain
+                if rounds_without_completion == 3:
+                    self._inject_goal_reminder()
+                elif rounds_without_completion == 6:
+                    self._inject_force_advance(scenario)
+                elif rounds_without_completion >= 9:
+                    self._auto_force_advance(scenario)
+                    rounds_without_completion = 0
+
+            # --- Exploration mode: advance dimension + phase round counter ---
+            if is_exploration:
+                self._advance_exploration_counters()
+
             self._save_state()
             round_num += 1
-        else:
-            if scenario.eval_goals:
-                incomplete = self._incomplete_goals(scenario)
-                if incomplete:
-                    self.display.info(
-                        f"Reached max rounds. Incomplete goals: {', '.join(incomplete)}"
-                    )
+
+        if reached_max and scenario.eval_goals:
+            incomplete = self._incomplete_goals(scenario)
+            if incomplete:
+                self.display.info(
+                    f"Reached max rounds. Incomplete goals: {', '.join(incomplete)}"
+                )
 
         # Reset for next scenario
         self._state.round_num = 0
         self._state.user_messages = []
         self._state.tester_messages = []
         self._state.completed_goals = []
+        self._state.exploration_phase = "Coverage"
+        self._state.exploration_phase_round = 0
+        self._state.current_dimension_index = 0
+        self._state.dimension_round = 0
+        self._state.variety_offset = 0
         self._save_state()
 
     async def _tester_turn(self, scenario: Scenario) -> str | None:
         """Have the Tester agent produce a task for the User."""
+        is_exploration = not scenario.eval_goals and not scenario.goals
+
         # Inject goal status before transcript if eval_goals are active
         if scenario.eval_goals:
             self._state.tester_messages.append({
                 "role": "user",
                 "content": self._build_goal_status(scenario),
             })
+
+        # In exploration mode, inject live coverage status
+        if is_exploration:
+            self._state.tester_messages.append({
+                "role": "user",
+                "content": self._build_coverage_status(),
+            })
+
+        # In scenario mode (eval_goals or plain goals), inject a rotating
+        # variety hint drawn from the configured exploration_dimensions list,
+        # so the Tester picks different clients/tests/categories each round
+        # instead of latching onto whatever the User found first.
+        if not is_exploration and self.config.exploration_dimensions:
+            hint = self._build_variety_hint()
+            if hint:
+                self._state.tester_messages.append({
+                    "role": "user",
+                    "content": hint,
+                })
 
         # Add tool transcript to tester's context
         if self._tool_transcript:
@@ -323,6 +384,9 @@ class Orchestrator:
                 # Execute each tool call
                 for tc in response.tool_calls:
                     self.display.tool_call(tc.name, tc.arguments)
+
+                    if tc.name not in self._state.tools_called:
+                        self._state.tools_called.append(tc.name)
 
                     result = await self.mcp.call_tool(tc.name, tc.arguments)
                     result = self.user_ctx.truncate_tool_result(result)
@@ -446,25 +510,42 @@ class Orchestrator:
             for p in pending:
                 lines.append(f"  - {p}")
         else:
-            lines.append("All tasks complete. You may wrap up the session.")
+            lines.append(
+                "All evaluation tasks are marked DONE. "
+                "The orchestrator will end the scenario automatically — "
+                "do not write closing remarks."
+            )
         return "\n".join(lines)
 
-    @staticmethod
-    def _is_session_end_signal(tester_response: str) -> bool:
-        """Detect when the tester is signaling the session is over."""
-        stripped = tester_response.strip().strip("()")
-        # Short responses that are just wrap-up phrases
-        if len(stripped) < 80:
-            end_phrases = [
-                "session concluded", "session complete", "session ended",
-                "testing complete", "testing concluded",
-                "all tasks complete", "all goals complete",
-                "end of session", "wrap up",
-            ]
-            lower = stripped.lower()
-            if any(phrase in lower for phrase in end_phrases):
-                return True
-        return False
+    def _build_variety_hint(self) -> str | None:
+        """Pick a dimension for this round to steer the Tester toward variety.
+
+        Uses a round-based rotation with a random per-scenario offset so that
+        (a) different runs of the same scenario start on different dimensions
+        and (b) every dimension gets touched within a single scenario.
+        """
+        dims = self.config.exploration_dimensions
+        if not dims:
+            return None
+        idx = (self._state.round_num + self._state.variety_offset) % len(dims)
+        active = dims[idx]
+        name = active["name"]
+        desc = (active.get("description") or "").strip().rstrip(".")
+        dim_line = f"**{name}**"
+        if desc:
+            dim_line += f" — {desc}"
+
+        other_names = [d["name"] for i, d in enumerate(dims) if i != idx]
+        return (
+            "## Variety Hint\n"
+            f"When this round's task requires picking specific entities "
+            f"(client, test, product category, date range, site tag, etc.), "
+            f"prefer examples related to this dimension: {dim_line}. "
+            "Do NOT reuse entities the User has already worked with this "
+            "session if you can avoid it — pick a different one to broaden "
+            "coverage. Other dimensions available for later rounds: "
+            f"{', '.join(other_names)}."
+        )
 
     def _inject_goal_reminder(self):
         """Nudge the tester to mark goals as done if it hasn't recently."""
@@ -476,6 +557,215 @@ class Orchestrator:
                 "Check if any pending tasks have already been accomplished."
             ),
         })
+
+    def _inject_force_advance(self, scenario: Scenario):
+        """Stronger nudge: the current pending task has stalled for 6 rounds."""
+        pending = self._incomplete_goals(scenario)
+        if not pending:
+            return
+        target = pending[0]
+        self._state.tester_messages.append({
+            "role": "user",
+            "content": (
+                f"STALL WARNING: Task '{target}' has been attempted for 6 rounds "
+                "without completion. If it cannot be accomplished with the "
+                "available tools, immediately write GOAL DONE: " + target + " "
+                "on its own line and move to the next task. Record the blocker "
+                "as an OBS describing what was missing."
+            ),
+        })
+        self.display.info(f"Stall nudge: forcing advance warning on '{target}'")
+
+    def _auto_force_advance(self, scenario: Scenario):
+        """Hard force-advance: orchestrator itself marks the stalled goal DONE."""
+        from .observations import Observation
+        pending = self._incomplete_goals(scenario)
+        if not pending:
+            return
+        target = pending[0]
+        self._state.completed_goals.append(target)
+        self.display.info(f"Auto force-advance: marked '{target}' DONE after 9 stalled rounds")
+
+        # Record as a blocker finding
+        obs = Observation(
+            category="stalled-goal",
+            severity="major",
+            description=(
+                f"Goal '{target}' was auto-advanced after 9 rounds without "
+                "completion. The Tester and User could not find a path to "
+                "accomplish this task with the available tools. This is a "
+                "usability finding: either the task is ambiguous or the tool "
+                "surface does not expose the required capability."
+            ),
+        )
+        self.obs_writer.write_observation(
+            obs,
+            scenario=scenario.name,
+            round_num=self._state.round_num,
+        )
+        self._state.observation_count += 1
+
+        # Let the tester know the orchestrator advanced it
+        self._state.tester_messages.append({
+            "role": "user",
+            "content": (
+                f"The orchestrator has auto-advanced task '{target}' and recorded "
+                "a stalled-goal observation. Move immediately to the next pending "
+                "task. Do not discuss this advancement with the User."
+            ),
+        })
+
+    # ------------------------------------------------------------------
+    # Exploration-mode helpers
+    # ------------------------------------------------------------------
+
+    _PHASE_ORDER = ("Coverage", "Combinations", "EdgeCases", "Depth")
+    _PHASE_ROUND_BUDGET = 15
+    _DIMENSION_ROTATION_ROUNDS = 4
+    _PLEASANTRY_PHRASES = (
+        "wrap up", "thank you for", "session conclud", "testing conclud",
+        "concludes our", "that concludes", "nothing more", "no further",
+        "farewell", "this concludes",
+    )
+
+    def _update_exploration_phase(self):
+        """Advance exploration phase state based on current coverage."""
+        all_tool_names = {t.get("function", {}).get("name", "") for t in self._tools}
+        all_tool_names.discard("")
+        covered = set(self._state.tools_called)
+
+        phase = self._state.exploration_phase
+
+        if phase == "Coverage":
+            if all_tool_names and all_tool_names.issubset(covered):
+                self._state.exploration_phase = "Combinations"
+                self._state.exploration_phase_round = 0
+                self.display.info("Exploration phase: Coverage → Combinations")
+        else:
+            if self._state.exploration_phase_round >= self._PHASE_ROUND_BUDGET:
+                idx = self._PHASE_ORDER.index(phase)
+                # Skip Coverage on wrap-around since all tools are hit
+                next_idx = idx + 1
+                if next_idx >= len(self._PHASE_ORDER):
+                    next_idx = 1  # back to Combinations
+                self._state.exploration_phase = self._PHASE_ORDER[next_idx]
+                self._state.exploration_phase_round = 0
+                self.display.info(
+                    f"Exploration phase: {phase} → {self._state.exploration_phase}"
+                )
+
+    def _advance_exploration_counters(self):
+        """Increment per-round counters after a completed exploration round."""
+        if self._state.exploration_phase != "Coverage":
+            self._state.exploration_phase_round += 1
+
+        if self.config.exploration_dimensions:
+            self._state.dimension_round += 1
+            if self._state.dimension_round >= self._DIMENSION_ROTATION_ROUNDS:
+                self._state.dimension_round = 0
+                self._state.current_dimension_index = (
+                    (self._state.current_dimension_index + 1)
+                    % len(self.config.exploration_dimensions)
+                )
+                active = self.config.exploration_dimensions[
+                    self._state.current_dimension_index
+                ]
+                self.display.info(f"Dimension rotation → {active['name']}")
+
+    def _current_dimension(self) -> dict[str, str] | None:
+        dims = self.config.exploration_dimensions
+        if not dims:
+            return None
+        idx = self._state.current_dimension_index % len(dims)
+        return dims[idx]
+
+    def _build_coverage_status(self) -> str:
+        """Build the Coverage Status message injected each exploration round."""
+        all_tool_names = sorted(
+            t.get("function", {}).get("name", "") for t in self._tools
+        )
+        all_tool_names = [n for n in all_tool_names if n]
+        covered = set(self._state.tools_called)
+        uncovered = [n for n in all_tool_names if n not in covered]
+        called = [n for n in all_tool_names if n in covered]
+
+        lines = ["## Coverage Status"]
+        lines.append(
+            f"Tools called so far ({len(called)}/{len(all_tool_names)}): "
+            + (", ".join(called) if called else "(none yet)")
+        )
+        if uncovered:
+            lines.append(f"Tools never called: {', '.join(uncovered)}")
+        else:
+            lines.append("Tools never called: (all tools have been called at least once)")
+        lines.append(f"Current phase: {self._state.exploration_phase}")
+
+        dim = self._current_dimension()
+        if dim:
+            desc = dim.get("description", "").strip()
+            dim_line = f"Current dimension: {dim['name']}"
+            if desc:
+                dim_line += f" — {desc}"
+            lines.append(dim_line)
+
+        lines.append(
+            "REMINDER: This session does not end. If you run out of ideas, "
+            "rotate dimensions or start a new phase. Never write closing remarks."
+        )
+        return "\n".join(lines)
+
+    def _looks_like_pleasantry(self, text: str) -> bool:
+        if not text:
+            return False
+        lower = text.lower()
+        return any(phrase in lower for phrase in self._PLEASANTRY_PHRASES)
+
+    async def _tester_turn_with_guard(
+        self, scenario: Scenario, is_exploration: bool
+    ) -> str | None:
+        """_tester_turn wrapper that detects pleasantries in exploration mode
+        and re-prompts the Tester with a concrete next-action directive.
+        """
+        response = await self._tester_turn(scenario)
+        if not is_exploration or response is None:
+            return response
+
+        for _ in range(2):
+            if not self._looks_like_pleasantry(response):
+                return response
+
+            self.display.info("Pleasantry detected — injecting forced next-action directive")
+            dim = self._current_dimension()
+            dim_text = f" Current dimension: {dim['name']}." if dim else ""
+            uncovered = [
+                t.get("function", {}).get("name", "")
+                for t in self._tools
+                if t.get("function", {}).get("name", "") not in set(self._state.tools_called)
+            ]
+            uncovered = [n for n in uncovered if n][:5]
+            if uncovered:
+                next_action = (
+                    "Ask the User to call one of these untried tools with "
+                    "realistic inputs: " + ", ".join(uncovered) + "."
+                )
+            else:
+                next_action = (
+                    "Pick one tool the User has already called and probe a new "
+                    "edge case, invalid input, or varied argument."
+                )
+            self._state.tester_messages.append({
+                "role": "user",
+                "content": (
+                    "Do not write closing remarks, farewells, or session summaries. "
+                    "The session continues. Current phase: "
+                    f"{self._state.exploration_phase}.{dim_text} {next_action} "
+                    "Reply with a concrete task for the User, nothing else."
+                ),
+            })
+            response = await self._tester_turn(scenario)
+            if response is None:
+                return None
+        return response
 
     def _save_state(self):
         """Persist current state."""

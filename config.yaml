@@ -43,3 +43,27 @@ scenarios:
 output:
   observations_dir: "observations"
   state_dir: "state"
+
+# Exploration-mode dimensions — the semantic axes of the MCP server's domain
+# that the Tester should systematically probe. Each round, one dimension is
+# active and acts as the "subject" of the probe while the phase state machine
+# (Coverage / Combinations / EdgeCases / Depth) controls the "type" of probe.
+# This list is only used in free-exploration mode (--explore). You can also
+# point this key at a YAML file path for external management.
+exploration_dimensions:
+  - name: Clients
+    description: Probe tools that filter, scope, or group by client.
+  - name: Products/Categories
+    description: Exercise product- and category-level filters and rollups.
+  - name: Site tags
+    description: Probe tools that slice by site tags, regions, or store groupings.
+  - name: Time
+    description: Try varied time ranges, granularities, comparisons, and boundaries.
+  - name: Tests
+    description: Exercise A/B test discovery, summary, and analysis tools.
+  - name: Custom charts
+    description: Build and query custom chart configurations.
+  - name: Lift explorers
+    description: Exercise lift-explorer tools with varied segments.
+  - name: Rollout analyses
+    description: Exercise rollout-analysis tools across different rollouts.

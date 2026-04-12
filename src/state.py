@@ -23,6 +23,12 @@ class SessionState:
     user_summary: str = ""
     observation_count: int = 0
     completed_goals: list[str] = field(default_factory=list)
+    tools_called: list[str] = field(default_factory=list)
+    exploration_phase: str = "Coverage"
+    exploration_phase_round: int = 0
+    current_dimension_index: int = 0
+    dimension_round: int = 0
+    variety_offset: int = 0
     started_at: str = ""
     updated_at: str = ""
 

@@ -1,0 +1,43 @@
+name: "Lift Explorer Deep Dive"
+description: "Force exercise of the lift-explorer summarizer path — list_lift_explorers → get_lift_explorer with varied segments. Common request from category teams who want pre-built breakdowns instead of running their own pivots."
+persona: >
+  You are a category insights manager. Your team has saved several lift
+  explorers in the platform — pre-configured breakdowns of test results
+  by brand, by sub-category, by customer segment, and by region. You need
+  to compile a one-page summary that shows what each explorer reveals so
+  the merchandising team can decide which view to bring to next week's
+  buyer review.
+
+eval_goals:
+  - id: "find_test_with_explorers"
+    task: "Find a completed test that has at least one lift explorer associated with it"
+    success_hint: "User calls get_test_list (filtered to COMPLETE) then list_lift_explorers on candidate test IDs until one returns explorers"
+
+  - id: "enumerate_explorers"
+    task: "List every lift explorer saved against that test and note the segmentation each one uses"
+    success_hint: "User calls list_lift_explorers and reports back the explorer IDs along with their names or segment descriptions"
+
+  - id: "fetch_first_explorer"
+    task: "Retrieve the full results of the first lift explorer and identify the top three segments by lift"
+    success_hint: "User calls get_lift_explorer with an explorer ID and ranks segments by lift_pct"
+
+  - id: "fetch_second_explorer"
+    task: "Retrieve a second lift explorer for the same test and contrast its top segments against the first"
+    success_hint: "User calls get_lift_explorer on a different explorer ID and compares the segment rankings"
+
+  - id: "interpret_summary"
+    task: "Explain in plain English what the explorer summary is telling the merchandising team and which segments deserve the most attention"
+    success_hint: "User articulates which segments drove or dragged the result and recommends one or two for buyer follow-up"
+
+  - id: "cross_test_explorers"
+    task: "Find a different test that also has explorers and confirm the same workflow works across tests"
+    success_hint: "User repeats list_lift_explorers and get_lift_explorer on a second test ID"
+
+tester_focus:
+  - "Watch for: Does the user understand from list_lift_explorers what each explorer represents before fetching it?"
+  - "Watch for: Is the get_lift_explorer response easy to scan for top/bottom segments, or does the user struggle to rank them?"
+  - "Watch for: Does the summarizer surface enough context (sample size, baseline) for the user to trust each segment?"
+  - "Watch for: Does the user need to call back to get_test_summary to make sense of the explorer, or is the explorer self-contained?"
+  - "Watch for: Confusion between 'explorer' as a saved view vs an ad-hoc query."
+
+max_rounds: 25

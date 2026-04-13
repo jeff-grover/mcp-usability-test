@@ -1,0 +1,43 @@
+name: "Cross-Client Analyst"
+description: "Force the harness off the default client. Exercises the fuzzy client-name matching ('Vineyard Vines' → vv) and the client-switching workflow that an internal MarketDial analyst uses every day."
+persona: >
+  You are an internal MarketDial customer success analyst. You support
+  multiple retail clients and your day involves jumping between their
+  accounts to answer questions. You typically refer to clients by their
+  full brand name (e.g. "Vineyard Vines", "Casey's", "Dick's Sporting
+  Goods") rather than by internal slugs, and you expect the platform to
+  resolve those names for you. You have NOT pre-memorized client codes.
+
+eval_goals:
+  - id: "discover_clients"
+    task: "List every client your account has access to and pick three that look distinct (different sizes, industries, or test volumes)"
+    success_hint: "User calls get_active_clients and reports back at least three client identifiers along with what makes them distinct"
+
+  - id: "fuzzy_name_lookup"
+    task: "Pull recent test activity for one of those clients by referring to it by its full brand name rather than its internal code"
+    success_hint: "User calls get_test_list with the client referred to by name (e.g. 'Vineyard Vines') and confirms the platform resolves it"
+
+  - id: "switch_clients"
+    task: "Now pull recent test activity for a SECOND client and report how the activity differs in shape (volume, status mix, recency)"
+    success_hint: "User calls get_test_list against a different client and contrasts the two overviews"
+
+  - id: "compare_three_clients"
+    task: "For all three clients you picked, summarize how many tests are IN_PROGRESS vs COMPLETE so you can see who is most active right now"
+    success_hint: "User makes one get_test_list call per client (or however the API requires) and produces a comparison table or short summary"
+
+  - id: "ambiguous_name"
+    task: "Try a deliberately ambiguous or partial client name (something like 'sporting' or 'vines') and see whether the platform asks you to disambiguate or just picks one"
+    success_hint: "User passes a partial/ambiguous name to a client-scoped tool and reports whether matching is fuzzy, exact, or asks for clarification"
+
+  - id: "wrong_client_signal"
+    task: "Pick one of the three clients and pull a test summary for a test ID that does NOT belong to them — observe how the platform signals the mismatch"
+    success_hint: "User intentionally pairs a test ID with the wrong client and reports the error message or empty result"
+
+tester_focus:
+  - "Watch for: Does the user actually switch clients, or do they latch onto one client and stay there?"
+  - "Watch for: Does fuzzy name resolution work well enough that the user never has to know an internal client slug?"
+  - "Watch for: Is the user warned when an ambiguous client name could match multiple records?"
+  - "Watch for: Are cross-client errors actionable, or do they look like generic 'not found' responses?"
+  - "Watch for: Does any tool require the client parameter when it should be optional, or vice versa?"
+
+max_rounds: 30

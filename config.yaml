@@ -35,6 +35,11 @@ scenarios:
   - scenarios/rollout_analysis.yaml
   - scenarios/stakeholder_report.yaml
   - scenarios/portfolio_monitoring.yaml
+  - scenarios/lift_explorer_deep_dive.yaml
+  - scenarios/product_keyword_search.yaml
+  - scenarios/store_lookup_by_id.yaml
+  - scenarios/cross_client_analysis.yaml
+  - scenarios/rollout_prediction.yaml
   # General exploration (goals-based, no eval tracking)
   - scenarios/basic_exploration.yaml
   - scenarios/store_comparison.yaml

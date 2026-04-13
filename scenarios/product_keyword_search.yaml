@@ -1,0 +1,43 @@
+name: "Product Keyword Search"
+description: "Stress-test multi-word product search — the AND-matching fix needs real exercise with phrases like 'running shoes' and 'mens training'. Common workflow for buyers and category managers who think in product phrases, not SKU IDs."
+persona: >
+  You are a buyer at a sporting-goods retailer preparing for a category
+  review. You think about products the way shoppers do — in short phrases
+  like "running shoes," "mens training," "womens yoga," "trail jacket."
+  You need to find the right product nodes in the platform so you can pull
+  test results and lift breakdowns for them later. You do NOT know any
+  SKU IDs or internal hierarchy paths.
+
+eval_goals:
+  - id: "single_word_baseline"
+    task: "Search for products matching the single word 'shoes' and note how many results come back"
+    success_hint: "User calls search_products with a single keyword and reports the result count"
+
+  - id: "two_word_phrase"
+    task: "Search for products matching the phrase 'running shoes' — both words should be required, not either"
+    success_hint: "User calls search_products with 'running shoes' and confirms results contain BOTH words, not just one"
+
+  - id: "demographic_phrase"
+    task: "Search for 'mens training' and verify the results are scoped to mens training products specifically"
+    success_hint: "User calls search_products with 'mens training' and inspects results to confirm AND-matching"
+
+  - id: "compare_word_orders"
+    task: "Try the same two words in reversed order ('training mens') and see whether result counts or rankings change"
+    success_hint: "User calls search_products with the words reversed and compares outputs, noting whether order matters"
+
+  - id: "no_match_phrase"
+    task: "Search for an intentionally specific multi-word phrase that should return zero or very few results, like 'mens trail running'"
+    success_hint: "User calls search_products with a narrow phrase and observes the empty/sparse result handling"
+
+  - id: "combine_with_hierarchy"
+    task: "Take a product node returned from a keyword search and walk up the hierarchy to see what category it belongs to"
+    success_hint: "User uses get_hierarchy on a product ID returned from search_products and reports the parent category"
+
+tester_focus:
+  - "Watch for: Does search_products treat multi-word input as AND or OR — and does the user notice if the behavior is wrong?"
+  - "Watch for: Is the result format clear about which words matched in each hit?"
+  - "Watch for: Does the user discover search_products on their own, or default to get_hierarchy?"
+  - "Watch for: How does the tool handle zero-result phrases — does it suggest alternatives or just return empty?"
+  - "Watch for: Is it intuitive to go from a keyword hit back into the product tree?"
+
+max_rounds: 25

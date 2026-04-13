@@ -1,0 +1,43 @@
+name: "Store Lookup by Client Site ID"
+description: "Exercise the new client_site_ids parameter on get_sites. Field teams and ops users typically know stores by their internal store number, not by the platform's surrogate IDs."
+persona: >
+  You are a regional operations manager. Your district leaders have sent
+  you a short list of store numbers they want to flag for an upcoming
+  remodel test — they wrote them down by hand off the back-office system,
+  so you have the client-side store IDs (e.g. "1042", "2317", "0588") and
+  nothing else. You need to pull each store's status, market, and recent
+  test history so you can decide which ones are eligible.
+
+eval_goals:
+  - id: "lookup_one_store"
+    task: "Look up a single store by its client_site_id (you can pick any plausible-looking ID from the fleet) and report its status and market"
+    success_hint: "User calls get_sites with client_site_ids set to a single ID and inspects the returned record"
+
+  - id: "lookup_multiple_stores"
+    task: "Look up three stores at once in a single call by passing multiple client_site_ids"
+    success_hint: "User calls get_sites with client_site_ids set to a list of three IDs in one call rather than three separate calls"
+
+  - id: "compare_to_filter_workflow"
+    task: "Contrast the client_site_ids lookup with the more general get_sites filter workflow — when would each be the right tool?"
+    success_hint: "User explains that client_site_ids is for known-ID lookups and that filters (status, market, since) are for discovery"
+
+  - id: "missing_id_handling"
+    task: "Try looking up a store ID that almost certainly does not exist (e.g. '99999999') and see how the tool handles it"
+    success_hint: "User passes a bogus client_site_id and reports whether the response is an error, an empty list, or a partial match"
+
+  - id: "tie_to_test_history"
+    task: "For one of the stores you found, pull its test history using get_site_tests"
+    success_hint: "User feeds a site_id from the get_sites lookup into get_site_tests and reports the result"
+
+  - id: "bulk_eligibility_check"
+    task: "For all three stores from the multi-ID lookup, summarize which ones look eligible for a new remodel test based on status and recent test load"
+    success_hint: "User combines the get_sites results with get_site_tests output and gives a short eligibility verdict per store"
+
+tester_focus:
+  - "Watch for: Does the user discover the client_site_ids parameter, or do they try to filter by name or status first?"
+  - "Watch for: Is it clear from the parameter name and description that this expects CLIENT-side IDs, not the platform's internal site_id?"
+  - "Watch for: Does the user batch IDs into a single call, or fall into a one-call-per-ID loop?"
+  - "Watch for: How does the tool respond to a non-existent ID — and is that response actionable?"
+  - "Watch for: Is the user able to pivot from a client_site_ids hit into get_site_tests cleanly?"
+
+max_rounds: 25

@@ -1,0 +1,48 @@
+name: "Rollout Prediction & Analysis Config"
+description: "Exercise the prediction-table and rollout-analysis-config tools that current scenarios skip. The CFO-facing 'if we roll this out chain-wide, what's the dollar impact?' workflow."
+persona: >
+  You are a finance partner embedded with the merchandising team. The
+  merch leads have a winning A/B test in hand and want to take it to the
+  CFO with a chain-wide projection. You need to (a) pull the prediction
+  table that extrapolates the test result to the full fleet, (b) confirm
+  the methodology and assumptions baked into the existing rollout
+  analyses, and (c) sanity-check the predicted dollars against the test's
+  actual lift before anyone signs off.
+
+eval_goals:
+  - id: "find_winning_test"
+    task: "Find a completed A/B test with a clearly positive lift that would be a plausible rollout candidate"
+    success_hint: "User calls get_test_list filtered to COMPLETE and uses get_test_summary to identify one with positive verdict and decent confidence"
+
+  - id: "pull_prediction_table"
+    task: "Pull the chain-wide prediction table for that test and identify the projected annual revenue impact"
+    success_hint: "User calls get_prediction_table with the test ID and reports the headline projected dollar figure"
+
+  - id: "interpret_assumptions"
+    task: "Explain what assumptions the prediction table is making — fleet size, time horizon, lift carry-over"
+    success_hint: "User articulates the key extrapolation assumptions and any caveats surfaced by the tool's response"
+
+  - id: "list_existing_analyses"
+    task: "Check whether any rollout analyses already exist that might supersede or contradict the prediction"
+    success_hint: "User calls list_analyses and reports whether any are tied to the same test or a related rollout"
+
+  - id: "inspect_analysis_config"
+    task: "Pick one rollout analysis and pull its full configuration — what time window, products, and stores does it cover?"
+    success_hint: "User calls get_analysis_config with an analysis ID and summarizes the configuration in plain language"
+
+  - id: "reconcile_prediction_vs_analysis"
+    task: "Compare the predicted dollar impact from the prediction table with whatever the rollout analysis actually measured — do they agree?"
+    success_hint: "User contrasts the two figures, noting that prediction extrapolates pre-rollout while analysis measures post-rollout reality, and explains any gap"
+
+  - id: "cfo_one_liner"
+    task: "Write the single sentence you would say to the CFO summarizing what the chain-wide impact will be and how confident you are"
+    success_hint: "User produces a concise statement that combines the prediction figure with an honest confidence caveat"
+
+tester_focus:
+  - "Watch for: Does the user discover get_prediction_table without prompting, or do they expect get_test_summary to include it?"
+  - "Watch for: Are the prediction-table outputs clearly labeled (units, time horizon, fleet basis) or do they require guessing?"
+  - "Watch for: Does the user understand the difference between a prediction (forward-looking extrapolation) and an analysis (backward-looking measurement)?"
+  - "Watch for: Is list_analyses → get_analysis_config a clean flow, or does the user get lost between IDs?"
+  - "Watch for: Does the user catch — or hallucinate — discrepancies between prediction and post-rollout reality?"
+
+max_rounds: 30

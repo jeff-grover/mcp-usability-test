@@ -1,0 +1,46 @@
+name: "Customer-Segment Breakout of Test Results (Woolworths)"
+description: "Test the workflow for breaking test results out by customer segment using the customer cross-tab. Drawn from Woolworths meals-aisle display strategies (lift concentrated in young singles/couples and mid-age singles/couples) and Woolworths price decrease following Aldi intrusion (used new/returning customer feature to understand who responded)."
+persona: >
+  You are a customer analytics lead at Woolworths. A recent merchandising
+  test shows a headline lift, but leadership wants to know *who* drove it.
+  Is this coming from existing high-frequency shoppers trading up, from
+  new customers, or from a specific life-stage segment? Your read will
+  influence whether the rollout is paired with a targeted marketing push.
+
+goals:
+  - "Find a completed test with customer-segment breakouts available"
+  - "Retrieve the cross-tab of lift by segment"
+  - "Identify which segments drove the headline and which were flat"
+
+eval_goals:
+  - id: "find_segmented_test"
+    task: "Find a test where customer-segment or new-vs-returning breakouts exist (merchandising, pricing, or display)"
+    success_hint: "User uses search_tests and inspects list_test_charts or list_analyses to confirm a segment view is available"
+
+  - id: "pull_cross_tab"
+    task: "Retrieve lift by customer segment"
+    success_hint: "User calls get_customer_cross_tab with the test and identifies per-segment lift"
+
+  - id: "interpret_segments"
+    task: "Name which segments drove the lift and which were flat or negative"
+    success_hint: "User reports lift by segment, highlights the 1-2 segments carrying the headline, and names segments that did not respond"
+
+  - id: "new_vs_returning"
+    task: "If the test has a new-vs-returning customer split, report whether the lift is coming from acquired customers or existing loyalty"
+    success_hint: "User extracts the new/returning slice and articulates the implication for marketing strategy"
+
+  - id: "sanity_vs_headline"
+    task: "Check that the segment-weighted totals roll up sensibly to the headline lift, and flag any inconsistency"
+    success_hint: "User cross-references get_test_summary with the segment-level numbers and notes if they diverge"
+
+  - id: "recommendation"
+    task: "Recommend which segments to target in the rollout marketing plan"
+    success_hint: "User picks a segment (or a pair) and names why — grounded in the lift numbers, not stakeholder preference"
+
+tester_focus:
+  - "Watch for: Does the user know that customer cross-tab is a distinct view from the main test results?"
+  - "Watch for: Does the user roll the segment lifts back up to the headline to sanity-check?"
+  - "Watch for: Is the new-vs-returning framing handled correctly, or conflated with high/low-frequency?"
+  - "Watch for: Does the user flag noise in small-n segments rather than over-reading them?"
+
+max_rounds: 35

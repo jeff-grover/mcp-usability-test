@@ -1,0 +1,47 @@
+name: "Low Match Quality — Why Are My Pair Correlations Weak? (Floor & Decor)"
+description: "Test the workflow for diagnosing weak treatment/control pair correlations on a test. Drawn from the Floor & Decor Slack thread where correlations stayed below ~70 even with the full fleet available and no filters. Low match quality is a distinct failure mode from low confidence on results — but users often conflate them."
+persona: >
+  You are a testing-program analyst at Floor & Decor. You built a test
+  using the full fleet with no filters, and the platform keeps reporting
+  treatment/control pair correlations in the 60s. You expected them
+  higher — other clients seem to routinely hit 90+. You want to understand
+  why matches are weak for this chain specifically, and what levers you
+  have: different metrics, different match weights, different scopes.
+
+goals:
+  - "Quantify the current pair-correlation distribution"
+  - "Test whether switching metric or scope improves the match"
+  - "Decide whether to proceed, rebuild, or accept lower match quality"
+
+eval_goals:
+  - id: "inspect_pair_correlations"
+    task: "Pull the site-pair list for the test and look at the pair-level correlations"
+    success_hint: "User calls get_site_pairs and characterizes the correlation distribution"
+
+  - id: "sparse_sites_check"
+    task: "Check whether very low-revenue sites (e.g., Design Studios, unusual formats) are in the pool dragging correlations down"
+    success_hint: "User calls get_sites and flags outlier low-revenue sites; suggests excluding them"
+
+  - id: "metric_choice"
+    task: "Consider whether revenue-at-total-store gives cleaner matches than the more specific category metric"
+    success_hint: "User reasons about swapping the match metric and potentially rebuilds via get_analysis_config inspection"
+
+  - id: "weighting_levers"
+    task: "Understand what matching weights are in play and how adjusting them would shift which sites pair together"
+    success_hint: "User inspects get_analysis_config and names the weights being used"
+
+  - id: "confidence_vs_match"
+    task: "Clearly distinguish 'pair correlation is weak' from 'lift confidence is low' — they measure different things"
+    success_hint: "User articulates that pair correlation is a match-quality input, and lift confidence is an output of the comparison"
+
+  - id: "decision"
+    task: "Decide: proceed with caveat, rebuild with tighter scope, or hold until a better design is possible"
+    success_hint: "User picks a path and names the evidence supporting it — not just 'let's try again'"
+
+tester_focus:
+  - "Watch for: Does the user confuse pair correlation with result confidence?"
+  - "Watch for: Does the user check site attributes / baseline sales to find outlier sites dragging the match?"
+  - "Watch for: Does the user consider swapping the match metric rather than only tweaking weights?"
+  - "Watch for: Does the user accept lower correlation with a caveat, or insist on impossible numbers?"
+
+max_rounds: 35

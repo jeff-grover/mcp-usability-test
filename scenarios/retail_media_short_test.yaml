@@ -1,0 +1,47 @@
+name: "Short-Duration Retail-Media Test Interpretation (Woolworths / Wool NZ)"
+description: "Test the workflow for reading results from very short retail-media tests — single-SKU or handful-of-brand campaigns with 1-2 week windows. Drawn from Woolworths Cartology Health & Beauty screens (4 of 5 brands negative, ~10 SKUs over 1 week), Wool Cartology digital-screens weekend campaign (inconclusive), and Wool NZ Pringles in-aisle chips display (40 stores / 9 weeks, clearly positive). The right move is often to caveat the read, not to declare a winner."
+persona: >
+  You are a Cartology / retail-media analyst at Woolworths. A vendor
+  campaign ran in stores last week and the partner brand wants results
+  yesterday. Some of the brand-level numbers are negative, and you suspect
+  the sample is too small to say much — but you still owe a response with
+  lift figures, confidence, and a sensible read. You also want to contrast
+  this with a cleaner test where the design actually gave you a signal.
+
+goals:
+  - "Retrieve per-brand or per-SKU lift from a short retail-media test"
+  - "Correctly interpret confidence given the sample size and duration"
+  - "Contrast with a longer-duration retail-media test and explain the difference in read quality"
+
+eval_goals:
+  - id: "find_short_rmn_test"
+    task: "Find a retail-media / Cartology test with short duration (1-2 weeks) and small product scope"
+    success_hint: "User uses search_tests with 'Cartology' / 'retail media' / 'screens' and picks a short-duration test from get_test_summary"
+
+  - id: "per_brand_breakout"
+    task: "Pull lift per brand (or per SKU) inside the test"
+    success_hint: "User calls get_test_products and/or get_lift_explorer to break lift out by brand"
+
+  - id: "confidence_assessment"
+    task: "Assess whether each brand-level lift is statistically meaningful. Small SKU counts + 1 week will often be noise"
+    success_hint: "User reads confidence values from get_test_summary/get_test_results and articulates why small-n short-duration reads are noisy"
+
+  - id: "contrast_cleaner_test"
+    task: "Find a retail-media test that was actually powered — e.g., a 9-week in-aisle display across ~40 stores — and contrast the read"
+    success_hint: "User uses search_tests to find a longer/better-powered retail-media test and compares sample size, duration, and confidence"
+
+  - id: "alternate_controls"
+    task: "Suggest whether a different control set (different site_pairs) would materially change the read"
+    success_hint: "User calls get_site_pairs and reasons about whether swapping controls could rescue confidence or only marginally helps"
+
+  - id: "honest_response"
+    task: "Draft a one-paragraph vendor response that names the numbers and the uncertainty"
+    success_hint: "User reports per-brand lift with confidence caveat and avoids declaring winners from noise"
+
+tester_focus:
+  - "Watch for: Does the user push back on short-duration noise, or dutifully report a 'winner'?"
+  - "Watch for: Is confidence clearly separated from lift in the narrative?"
+  - "Watch for: Does the user know to look at pair-level data before assuming controls would fix it?"
+  - "Watch for: Does the user correctly contrast a well-designed RMN test with a poorly-designed one?"
+
+max_rounds: 35

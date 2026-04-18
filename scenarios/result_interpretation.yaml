@@ -37,6 +37,10 @@ eval_goals:
     task: "Check if anyone has created custom charts for any of these tests — alternate views that might tell a different story"
     success_hint: "User calls list_test_charts and optionally retrieves custom chart results"
 
+  - id: "intended_vs_side_effect_tradeoff"
+    task: "Find a test where the intended positive metric went up AND an unintended negative metric also went up (e.g., Woolworths scan-to-pay: sales and NPS up, but stockloss / stock adjustment also up). Translate both sides into dollars and compute a net position to support an honest rollout recommendation."
+    success_hint: "User retrieves lift on both the positive metric and the side-effect metric (via get_test_results or get_metric_time_series), correctly distinguishes closely-related metrics like Stockloss Rate vs Stock Adjustment Rate, dollarizes both sides, and recommends rollout conditions that account for store-cohort differences (e.g., high-shrink vs low-shrink) rather than a binary go/no-go"
+
 tester_focus:
   - "Watch for: Does the user understand what confidence percentage means? Do they confuse it with lift?"
   - "Watch for: Are the metrics clearly labeled in tool output — is it obvious which number is lift vs confidence?"
@@ -44,5 +48,6 @@ tester_focus:
   - "Watch for: Does the user give accurate advice about improving confidence, or does it hallucinate interventions?"
   - "Watch for: Can the user identify outlier pairs that may be distorting overall results?"
   - "Watch for: Does the user know that custom charts exist and can supplement the parent test result?"
+  - "Watch for: When a positive and an unintended-negative metric both move, does the user surface BOTH sides and compute a net, rather than burying the side-effect?"
 
 max_rounds: 35

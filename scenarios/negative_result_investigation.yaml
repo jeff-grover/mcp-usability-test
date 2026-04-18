@@ -1,0 +1,47 @@
+name: "Negative / Partial Result — Root-Cause Drill-Down (Woolworths)"
+description: "Test the workflow for investigating a test whose overall result was negative or worked in only a subset of stores. Drawn from Woolworths flatbread machine installation (2 of 6 stores showed a significant bakery lift — demographic drivers explained the rest) and the recurring 'why is lift low for THIS brand but not the others' Cartology question."
+persona: >
+  You are a category manager at Woolworths. A partner-vendor funded
+  equipment install ran in a handful of stores and the headline result is
+  mixed — not all stores showed a lift, and overall the read is
+  underwhelming. Before the vendor conversation next week, you want to
+  understand which stores worked, which didn't, and whether there is a
+  demographic or catchment-area pattern that explains the divergence.
+
+goals:
+  - "Find the specific test and inspect the store-level spread"
+  - "Identify the cohort where the test worked vs where it didn't"
+  - "Offer a plausible driver (demographic, competitive, income) without overreaching"
+
+eval_goals:
+  - id: "find_the_test"
+    task: "Locate the relevant test by keyword (e.g., 'flatbread', 'bakery', partner/vendor name) and pull its summary"
+    success_hint: "User uses search_tests and get_test_summary to land on the right test"
+
+  - id: "pair_distribution"
+    task: "Look at pair-level or site-level results. How many pairs are positive, how many flat or negative?"
+    success_hint: "User calls get_site_pairs and characterizes the distribution rather than quoting only the headline"
+
+  - id: "category_spread"
+    task: "Break out lift by subcategory or brand. Is one subcategory pulling the whole thing?"
+    success_hint: "User calls get_test_products and/or get_lift_explorer and isolates the subcategory driving the number"
+
+  - id: "store_attribute_hypothesis"
+    task: "Enumerate candidate explanations tied to store attributes — demographics of the catchment area, population density, nearby competitors, average income"
+    success_hint: "User calls get_sites to inspect site attributes for the winning vs losing stores and proposes a hypothesis"
+
+  - id: "confound_check"
+    task: "Rule out the obvious confounds — did a couple of the losing stores have short runs, late installs, or concurrent tests?"
+    success_hint: "User cross-references get_site_tests / get_test_sites to flag overlap or timing issues"
+
+  - id: "recommendation"
+    task: "Separate three paths: (a) retarget future rollout to the cohort where it worked, (b) rerun with better controls, (c) kill the idea"
+    success_hint: "User names which of the three the data supports and what evidence would change the call"
+
+tester_focus:
+  - "Watch for: Does the user avoid over-interpreting a 2-of-6 positive result as validation?"
+  - "Watch for: Does the user distinguish a demographic driver (real) from a noisy subset (spurious)?"
+  - "Watch for: Does the user check for timing/execution confounds before concluding the idea itself is the problem?"
+  - "Watch for: Is the final recommendation grounded in the data rather than the stakeholder's preferred answer?"
+
+max_rounds: 40

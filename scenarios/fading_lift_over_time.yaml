@@ -1,0 +1,47 @@
+name: "Fading Lift Over Test Duration (Big W / Nestle)"
+description: "Test the workflow for detecting an effect that is strong early but tapers by weeks 3-4. Drawn from the Big W × Nestle product-sampling test where initial lift was positive but faded by weeks 3-4. The interesting failure mode is calling a winner based on weeks 1-2 and missing that the effect decays."
+persona: >
+  You are a category analyst at Big W. A vendor-funded product-sampling
+  program ran across several stores for 6+ weeks. The vendor wants to
+  extend the program based on 'great early results'. You are suspicious —
+  novelty effects are common with in-store sampling. You want to pull the
+  week-by-week lift and see whether the effect held up, faded, or
+  reversed before making a recommendation.
+
+goals:
+  - "Retrieve weekly lift over the duration of a sampling or promotional test"
+  - "Identify whether the effect is fading"
+  - "Recommend whether to extend, end, or redesign"
+
+eval_goals:
+  - id: "find_sampling_test"
+    task: "Find a product-sampling, in-store promo, or similar short-lived-activation test"
+    success_hint: "User uses search_tests with keywords like 'sampling', 'promotion', 'display' and picks a multi-week test"
+
+  - id: "weekly_lift"
+    task: "Pull weekly / period lift across the full test duration"
+    success_hint: "User calls get_metric_time_series (or list_test_charts for a lift-by-week chart) and extracts a weekly series"
+
+  - id: "detect_fade"
+    task: "Characterize the trajectory — rising, flat, or fading. Quantify how much the lift dropped from weeks 1-2 vs weeks 3-4+"
+    success_hint: "User names a numerical fade (e.g., 'week 1 +8%, week 4 +1%, weeks 5-6 near zero')"
+
+  - id: "headline_vs_trajectory"
+    task: "Compare the headline cumulative lift to the trajectory. Does the headline oversell a fading effect?"
+    success_hint: "User cross-references get_test_summary headline with the weekly series and flags the drift"
+
+  - id: "novelty_vs_seasonality"
+    task: "Consider whether the fade is novelty (initial customer curiosity), seasonality, or vendor execution dropping off (e.g., samples running out)"
+    success_hint: "User names the three candidate explanations and points to which the data supports"
+
+  - id: "recommendation"
+    task: "Recommend whether to extend, end, or redesign — and what the next test should control for"
+    success_hint: "User picks a path and names the design change (longer duration, rotate SKUs, measure execution compliance)"
+
+tester_focus:
+  - "Watch for: Does the user pull weekly data, or stop at the headline?"
+  - "Watch for: Does the user recognize the novelty-effect pattern vs assume the effect will persist?"
+  - "Watch for: Does the recommendation call out execution / compliance monitoring, not just 'run longer'?"
+  - "Watch for: Does the user confuse weekly lift with weekly sales (absolute vs relative)?"
+
+max_rounds: 35

@@ -1,0 +1,47 @@
+name: "Is My Data Broken? — Diagnosing a Suspicious Weekly Dip"
+description: "Test the workflow for diagnosing a suspicious drop in a weekly metric on an active test. Drawn from two real Slack escalations: a Woolworths user flagging a sharp drop in Brick & Mortar Sales for w/c 11 Feb 2026 on test 3363 that turned out to affect multiple tests covering that week, and a Floor & Decor user (test 144) flagging a sudden drop in weekly customer count 1-3 weeks before a CFO presentation."
+persona: >
+  You are a client-facing analyst. A stakeholder just pinged you saying
+  'one of the metrics on our test looks wrong for a recent week — did the
+  feed break?' They have an exec presentation soon. You need to figure out
+  fast whether it's (a) a real dip, (b) a known data-pipeline issue that
+  is affecting multiple tests, or (c) a scaling/control artifact — and
+  give the stakeholder an honest status.
+
+goals:
+  - "Locate the test and the suspicious week quickly"
+  - "Cross-check the metric against related metrics on the same test"
+  - "Determine blast radius — is this one test, or every test overlapping that week?"
+
+eval_goals:
+  - id: "find_test"
+    task: "Find the test by ID or name from the stakeholder's description and confirm it is still active"
+    success_hint: "User uses find_test_by_id or search_tests to land on the right test and get_test_summary to confirm status/dates"
+
+  - id: "pull_weekly_series"
+    task: "Pull the weekly time series for the flagged metric and visually (or numerically) confirm the dip"
+    success_hint: "User calls get_metric_time_series and identifies the specific week and the magnitude of the drop"
+
+  - id: "cross_metric_check"
+    task: "Compare the flagged metric against a related metric on the same test (e.g., transactions vs revenue, or B&M vs Online+B&M) to see if only one metric is affected"
+    success_hint: "User pulls get_test_results or another metric time series and concludes whether the anomaly is metric-specific or broad"
+
+  - id: "blast_radius"
+    task: "Identify other tests whose windows overlap the suspicious week — if the feed broke, they are all affected"
+    success_hint: "User calls get_test_list filtered by date and enumerates overlapping active tests"
+
+  - id: "scaled_vs_raw"
+    task: "If the issue appears only in scaled-control / extended-window calculations, check the analysis config"
+    success_hint: "User calls get_analysis_config and notes whether a recent extension or recalculation lines up with the dip"
+
+  - id: "stakeholder_response"
+    task: "Draft a short response: what you observed, what you've ruled out, whether exec-ready or needs caveat"
+    success_hint: "User summarizes status honestly: 'real dip' / 'feed issue affecting N tests' / 'artifact of recent CC extension', with evidence"
+
+tester_focus:
+  - "Watch for: Does the user jump to a conclusion, or methodically check scope before concluding?"
+  - "Watch for: Does the user know to check multiple metrics on the same test rather than taking one at face value?"
+  - "Watch for: Does the user check whether OTHER tests show the same anomaly, which points to feed vs test-specific?"
+  - "Watch for: Does the user distinguish a raw-data issue from a scaled-control/recalc artifact?"
+
+max_rounds: 40

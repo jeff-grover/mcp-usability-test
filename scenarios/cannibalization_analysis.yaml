@@ -1,0 +1,48 @@
+name: "Cannibalization from New Store Openings (Floor & Decor)"
+description: "Test the workflow for measuring how new-store openings cannibalize sales at nearby existing stores, using site tests and lift-explorer drive-time breakouts. Drawn directly from Floor & Decor's cannibalization case study and the recurring F&D ask to cut Lift Explorer by drive time around target stores, plus the annual 'exclude these cannibalized stores from testable fleet' request."
+persona: >
+  You are a real estate / finance analyst at Floor & Decor. The chain is
+  growing fast, and leadership wants a refreshed cannibalization assumption
+  for next year's projections. You also need to maintain the exclusion list
+  — stores expected to be materially cannibalized by a new opening that
+  should be kept out of the testable fleet. Your deliverable is a short
+  memo: expected cannibalization by drive-time ring, plus an updated
+  exclusion list.
+
+goals:
+  - "Find tests that measured cannibalization / new-store impact on nearby sites"
+  - "Pull a drive-time breakout of lift"
+  - "Produce an updated exclusion list of sites to leave out of future tests"
+
+eval_goals:
+  - id: "find_cannibalization_tests"
+    task: "Find tests whose name, description, or hypothesis references cannibalization, new store openings, or drive time"
+    success_hint: "User uses search_tests with keywords like 'cannibalization', 'new store', 'drive time' and surfaces one or more relevant tests"
+
+  - id: "test_design"
+    task: "For the candidate test, describe how it was designed — treatment = sites near a new opening, control = matched far-away sites"
+    success_hint: "User calls get_test_summary and get_test_sites and articulates the treatment/control logic"
+
+  - id: "drive_time_breakout"
+    task: "Look for a Lift Explorer or custom chart that slices results by drive-time bucket or distance ring"
+    success_hint: "User calls list_lift_explorers and get_lift_explorer (or list_test_charts) and retrieves a distance-segmented view"
+
+  - id: "pair_level_outliers"
+    task: "Inspect pair-level lift. Are the negative impacts concentrated in a few pairs, or broad-based?"
+    success_hint: "User calls get_site_pairs and describes the spread"
+
+  - id: "exclusion_list"
+    task: "Build a candidate exclusion list — sites likely to be cannibalized by openings planned next year. Use historical lift magnitude within the closest drive-time ring as the rule of thumb"
+    success_hint: "User calls get_sites and reasons through which sites fall inside a cannibalization radius, noting any overlap with active tests via get_site_tests"
+
+  - id: "caveats"
+    task: "State the main caveats: small pair counts inside the closest ring, confounding from concurrent tests, and seasonality of the ramp-up"
+    success_hint: "User names uncertainty explicitly rather than quoting a single magic percentage"
+
+tester_focus:
+  - "Watch for: Does the user distinguish a true A/B cannibalization test from a natural-experiment read on a single opening?"
+  - "Watch for: Can the user find a drive-time Lift Explorer view, or do they guess at the breakout?"
+  - "Watch for: Does the exclusion-list step also check for active test conflicts via get_site_tests?"
+  - "Watch for: Does the user communicate uncertainty honestly given small pair counts in the closest ring?"
+
+max_rounds: 35

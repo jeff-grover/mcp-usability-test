@@ -1,0 +1,47 @@
+name: "Product Hierarchy Confusion (Floor & Decor)"
+description: "Stress-test the product-hierarchy lookup workflow when a user's mental model doesn't match how the platform rolls up SKUs. Drawn from two Floor & Decor Slack threads: (1) a test showing 'no data' for tested products because the hierarchy label was 'Laminate' vs 'LAMINATE' (casing mismatch), and (2) a user asking why their POOL sub-class looked different from their internal product file — the SKUs actually rolled up to MOSAIC(S) in the MarketDial data."
+persona: >
+  You are a merchandising analyst at Floor & Decor. You just pulled a test
+  result and a category you expected to see simply isn't there — the
+  tested-products panel is empty, or the subcategory count looks way off
+  from what you see in your internal product master. Before escalating to
+  your CSM, you want to use the platform itself to figure out where the
+  SKUs actually live in the hierarchy.
+
+goals:
+  - "Verify the product hierarchy as the platform sees it"
+  - "Locate where an expected category actually rolls up"
+  - "Reconcile a missing/empty category on a test result"
+
+eval_goals:
+  - id: "find_test_with_missing_data"
+    task: "Locate a test whose product-breakdown view appears empty for a category you expected to see"
+    success_hint: "User uses search_tests and get_test_products on a candidate test and notices the empty/sparse category"
+
+  - id: "inspect_hierarchy"
+    task: "Pull the platform's product hierarchy and look for the expected category under variant casing or spelling"
+    success_hint: "User calls get_hierarchy and scans for near-matches (e.g., 'Laminate' vs 'LAMINATE', or 'POOL' vs 'MOSAIC')"
+
+  - id: "sku_lookup"
+    task: "Search for representative SKUs from the expected category to see where they actually sit"
+    success_hint: "User calls search_products with SKU names/keywords and observes which parent class the platform assigned"
+
+  - id: "articulate_mismatch"
+    task: "Explain the cause clearly — either the test filter is casing-sensitive and missing the category, or the internal product file labels the category differently than the platform feed"
+    success_hint: "User names the root cause (casing / different rollup) rather than concluding the test is broken"
+
+  - id: "resolution_path"
+    task: "Suggest a fix: update the test's product filter to the canonical hierarchy name, or reconcile the product file mapping with the MarketDial feed"
+    success_hint: "User distinguishes a user-side fix (rebuild the view with the correct name) from a feed-side fix (update the mapping)"
+
+  - id: "prevention"
+    task: "Recommend a quick sanity check the user can run before the next test build — e.g., always verify the category exists in get_hierarchy with exact casing before saving the test"
+    success_hint: "User names a reusable pre-flight check"
+
+tester_focus:
+  - "Watch for: Does the user go to the hierarchy tool, or spin trying to force the test to work?"
+  - "Watch for: Does the user notice case-sensitivity, or miss it entirely?"
+  - "Watch for: Does the user use search_products with SKUs to locate the real home of the category?"
+  - "Watch for: Does the user separate 'platform bug' from 'mapping mismatch' honestly?"
+
+max_rounds: 30

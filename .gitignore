@@ -19,6 +19,9 @@ observations/session_*.md
 # Logs
 harness.log
 
+# Local config (copy config.example.yaml → config.yaml and customize)
+config.yaml
+
 # IDE
 .idea/
 .vscode/

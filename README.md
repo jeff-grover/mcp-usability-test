@@ -71,7 +71,13 @@ pip install -e .
 
 ## Configuration
 
-Edit `config.yaml`:
+Copy the example config, then edit your local copy (which is gitignored):
+
+```bash
+cp config.example.yaml config.yaml
+```
+
+`config.yaml`:
 
 ```yaml
 llm:

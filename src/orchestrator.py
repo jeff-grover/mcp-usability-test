@@ -204,6 +204,11 @@ class Orchestrator:
             exploration_dimensions=self.config.exploration_dimensions or None,
         )
 
+        suffix = self.config.llm.system_prompt_suffix
+        if suffix:
+            user_system = f"{user_system}\n\n{suffix}"
+            tester_system = f"{tester_system}\n\n{suffix}"
+
         # Initialize message histories (or use resumed state)
         if not self._state.user_messages:
             self._state.user_messages = [
@@ -328,7 +333,8 @@ class Orchestrator:
         """
         def _build_messages():
             trimmed = ctx.trim_messages(history)
-            return ctx.inject_summary(trimmed)
+            with_summary = ctx.inject_summary(trimmed)
+            return ctx.coalesce_user_messages(with_summary)
 
         try:
             return await self.llm.chat(_build_messages(), tools=tools)

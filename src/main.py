@@ -103,18 +103,47 @@ def free_exploration_scenario() -> Scenario:
     )
 
 
+def _resolve_model_profile(
+    model: str, profiles: dict[str, dict]
+) -> dict:
+    """Find the profile whose key is a substring of the model name.
+
+    Longest matching key wins so specific entries (e.g. "gpt-oss-120b")
+    beat generic ones ("gpt-oss"). Returns an empty dict when none match.
+    """
+    if not profiles:
+        return {}
+    matches = [(k, v) for k, v in profiles.items() if k.lower() in model.lower()]
+    if not matches:
+        return {}
+    return max(matches, key=lambda kv: len(kv[0]))[1]
+
+
 def build_orchestrator_config(raw: dict) -> OrchestratorConfig:
     """Convert raw YAML config into typed config objects."""
     llm_raw = raw.get("llm", {})
+    model = llm_raw.get("model", "gemma-4-e4b")
+    profile = _resolve_model_profile(model, raw.get("model_profiles", {}))
+
+    def _pick(key: str, default):
+        """Top-level llm.<key> wins; otherwise profile; otherwise default."""
+        if key in llm_raw:
+            return llm_raw[key]
+        if key in profile:
+            return profile[key]
+        return default
+
     llm = LLMConfig(
         base_url=llm_raw.get("base_url", "http://localhost:1234/v1"),
         api_key=llm_raw.get("api_key", "lm-studio"),
-        model=llm_raw.get("model", "gemma-4-e4b"),
-        temperature=llm_raw.get("temperature", 0.7),
-        max_tokens=llm_raw.get("max_tokens", 2048),
+        model=model,
+        temperature=_pick("temperature", 0.7),
+        max_tokens=_pick("max_tokens", 2048),
         timeout_seconds=llm_raw.get("timeout_seconds", 120),
         max_retries=llm_raw.get("max_retries", 3),
         retry_delay_seconds=llm_raw.get("retry_delay_seconds", 5.0),
+        reasoning_effort=_pick("reasoning_effort", None),
+        system_prompt_suffix=_pick("system_prompt_suffix", None),
     )
 
     mcp_raw = raw.get("mcp_server", {})

@@ -138,6 +138,35 @@ class ContextManager:
             {"role": "user", "content": transcript},
         ]
 
+    def coalesce_user_messages(
+        self, messages: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Merge consecutive user messages into one.
+
+        Stricter chat templates (e.g. Mistral's) enforce user/assistant
+        alternation and return a 400 on consecutive user turns. The tester
+        turn appends several ephemeral user messages per round (goal status,
+        coverage, variety hint, tool transcript), and history-halving
+        recovery can also slice mid-sequence — this merges them at the LLM
+        boundary without mutating stored history.
+        """
+        result: list[dict[str, Any]] = []
+        for msg in messages:
+            prev = result[-1] if result else None
+            if (
+                prev is not None
+                and msg.get("role") == "user"
+                and prev.get("role") == "user"
+                and isinstance(msg.get("content"), str)
+                and isinstance(prev.get("content"), str)
+            ):
+                merged = dict(prev)
+                merged["content"] = prev["content"] + "\n\n" + msg["content"]
+                result[-1] = merged
+            else:
+                result.append(msg)
+        return result
+
     def inject_summary(
         self, messages: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:

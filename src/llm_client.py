@@ -28,6 +28,8 @@ class LLMConfig:
     timeout_seconds: int = 120
     max_retries: int = 3
     retry_delay_seconds: float = 5.0
+    reasoning_effort: str | None = None  # "low" | "medium" | "high" (gpt-oss)
+    system_prompt_suffix: str | None = None  # e.g. "/no_think" for Qwen3
 
 
 @dataclass
@@ -74,6 +76,8 @@ class LLMClient:
                     "temperature": self.config.temperature,
                     "max_tokens": self.config.max_tokens,
                 }
+                if self.config.reasoning_effort:
+                    kwargs["reasoning_effort"] = self.config.reasoning_effort
                 if tools:
                     kwargs["tools"] = tools
                     kwargs["tool_choice"] = "auto"

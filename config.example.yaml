@@ -2,11 +2,29 @@ llm:
   base_url: "http://localhost:1234/v1"
   api_key: "lm-studio"
   model: "gemma-4-e4b-it"
-  temperature: 0.7
+  # Omit temperature / reasoning_effort to let model_profiles apply.
+  # Anything set here overrides the matching profile.
   max_tokens: 2048
   timeout_seconds: 120
   max_retries: 3
   retry_delay_seconds: 5.0
+
+# Per-model defaults selected by substring match against llm.model.
+# Longest matching key wins. Explicit llm.<key> entries above still
+# override the profile, so you can temporarily tweak without editing.
+model_profiles:
+  gemma:
+    temperature: 0.7
+  mistral:
+    temperature: 0.3           # stricter template, lower temp for tool-calling
+  gpt-oss:
+    temperature: 1.0           # OpenAI's recommended sampler for gpt-oss
+    reasoning_effort: "high"   # better tool selection on agentic loops
+  qwen:
+    temperature: 0.7           # Qwen3 non-thinking default (publisher rec.)
+    system_prompt_suffix: "/no_think"  # disables Qwen3 thinking mode
+  glm:
+    temperature: 0.6           # Zhipu's GLM-4.x recommendation
 
 mcp_server:
   transport: "streamable_http"       # "streamable_http" or "sse"

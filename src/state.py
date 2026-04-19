@@ -51,14 +51,14 @@ class StateManager:
         data = asdict(state)
         # Write atomically via tmp file
         tmp = self._state_file.with_suffix(".tmp")
-        with open(tmp, "w") as f:
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
         tmp.replace(self._state_file)
         logger.debug("Session state saved (round %d)", state.round_num)
 
     def load(self) -> SessionState:
         """Load session state from disk."""
-        with open(self._state_file) as f:
+        with open(self._state_file, encoding="utf-8") as f:
             data = json.load(f)
         state = SessionState(**data)
         logger.info(
@@ -77,5 +77,5 @@ class StateManager:
     def append_transcript(self, entry: dict[str, Any]):
         """Append an entry to the append-only transcript log."""
         entry["_ts"] = datetime.now().isoformat()
-        with open(self._transcript_file, "a") as f:
+        with open(self._transcript_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")

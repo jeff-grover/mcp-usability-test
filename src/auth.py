@@ -39,12 +39,12 @@ class FileTokenStorage:
 
     def _read(self) -> dict[str, Any]:
         if self._path.exists():
-            return json.loads(self._path.read_text())
+            return json.loads(self._path.read_text(encoding="utf-8"))
         return {}
 
     def _write(self, data: dict[str, Any]):
         tmp = self._path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data, indent=2, default=str))
+        tmp.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
         tmp.replace(self._path)
 
     async def get_tokens(self) -> OAuthToken | None:

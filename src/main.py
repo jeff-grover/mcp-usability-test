@@ -19,13 +19,13 @@ from .orchestrator import Orchestrator, OrchestratorConfig, Scenario
 
 def load_config(path: str) -> dict:
     """Load and return the YAML config file."""
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
 def load_scenario(path: str) -> Scenario:
     """Load a scenario from a YAML file."""
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     return Scenario(
         name=data.get("name", Path(path).stem),
@@ -71,7 +71,7 @@ def load_exploration_dimensions(spec: Any) -> list[dict[str, str]]:
     if spec is None:
         return []
     if isinstance(spec, str):
-        with open(spec) as f:
+        with open(spec, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         if isinstance(data, dict) and "dimensions" in data:
             data = data["dimensions"]

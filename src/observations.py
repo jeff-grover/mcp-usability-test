@@ -160,7 +160,7 @@ class ObservationWriter:
 
     def write_header(self, metadata: dict[str, Any]):
         """Write the file header with session metadata."""
-        with open(self._file_path, "w") as f:
+        with open(self._file_path, "w", encoding="utf-8") as f:
             f.write("---\n")
             for k, v in metadata.items():
                 f.write(f"{k}: {v}\n")
@@ -180,7 +180,7 @@ class ObservationWriter:
         self._count += 1
         self._written.append(obs)
 
-        with open(self._file_path, "a") as f:
+        with open(self._file_path, "a", encoding="utf-8") as f:
             f.write(f"## Observation #{self._count}\n\n")
             f.write(f"- **Time**: {obs.timestamp}\n")
             f.write(f"- **Scenario**: {obs.scenario}\n")

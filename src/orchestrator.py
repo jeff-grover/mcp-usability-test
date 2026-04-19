@@ -29,6 +29,31 @@ from .prompts import (
 logger = logging.getLogger(__name__)
 
 
+# Prefixes identifying ephemeral per-round injections into the Tester's
+# context. Every round we regenerate these messages, so prior copies are
+# stale and should be dropped before appending the new ones — otherwise
+# context bloats round-over-round (especially the tool transcript, which
+# already contains the last N entries so old copies are fully redundant).
+_STALE_TESTER_PREFIXES = (
+    "## Coverage Status",
+    "## Goal Status",
+    "## Variety Hint",
+    "Here is the User's recent tool interaction transcript:",
+)
+
+
+def _strip_stale_ephemeral(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Remove stale ephemeral user messages (coverage/goal/variety/transcript)."""
+    return [
+        m for m in messages
+        if not (
+            m.get("role") == "user"
+            and isinstance(m.get("content"), str)
+            and m["content"].lstrip().startswith(_STALE_TESTER_PREFIXES)
+        )
+    ]
+
+
 @dataclass
 class Scenario:
     name: str = ""
@@ -92,6 +117,19 @@ class Orchestrator:
         try:
             if resume and self.state_mgr.has_saved_state():
                 self._state = self.state_mgr.load()
+                # Compact resumed state: older sessions accumulated stale
+                # ephemeral messages each round. Strip them so prompt
+                # processing doesn't blow up on resume.
+                before = count_message_tokens(self._state.tester_messages)
+                self._state.tester_messages = _strip_stale_ephemeral(
+                    self._state.tester_messages
+                )
+                after = count_message_tokens(self._state.tester_messages)
+                if before != after:
+                    logger.info(
+                        "Compacted tester context on resume: %d -> %d tokens",
+                        before, after,
+                    )
                 self.obs_writer.set_session_id(self._state.session_id)
                 self.user_ctx.summary = self._state.user_summary
                 self.tester_ctx.summary = self._state.tester_summary
@@ -258,6 +296,12 @@ class Orchestrator:
     async def _tester_turn(self, scenario: Scenario) -> str | None:
         """Have the Tester agent produce a task for the User."""
         is_exploration = not scenario.eval_goals and not scenario.goals
+
+        # Drop prior ephemeral injections so we don't pile up stale copies
+        # of the coverage/goal/variety/transcript messages each round.
+        self._state.tester_messages = _strip_stale_ephemeral(
+            self._state.tester_messages
+        )
 
         # Inject goal status before transcript if eval_goals are active
         if scenario.eval_goals:

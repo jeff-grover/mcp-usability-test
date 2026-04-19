@@ -42,6 +42,26 @@ _STALE_TESTER_PREFIXES = (
 )
 
 
+def _halve_history(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Drop the oldest half of non-system messages — last-resort recovery
+    when prompt processing keeps timing out on a bloated context.
+
+    Also drops orphan `role: "tool"` messages at the head of the kept tail,
+    since the OpenAI-format API rejects tool replies whose paired
+    tool_calls assistant message is no longer present.
+    """
+    if len(messages) <= 2:
+        return list(messages)
+    system = [messages[0]] if messages[0].get("role") == "system" else []
+    rest = messages[len(system):]
+    keep = max(4, len(rest) // 2)
+    tail = rest[-keep:]
+    i = 0
+    while i < len(tail) and tail[i].get("role") == "tool":
+        i += 1
+    return system + tail[i:]
+
+
 def _strip_stale_ephemeral(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Remove stale ephemeral user messages (coverage/goal/variety/transcript)."""
     return [
@@ -293,6 +313,42 @@ class Orchestrator:
         self._state.variety_offset = 0
         self._save_state()
 
+    async def _chat_with_recovery(
+        self,
+        history: list[dict[str, Any]],
+        ctx: ContextManager,
+        tools: list[dict[str, Any]] | None = None,
+        is_tester: bool = False,
+    ):
+        """Call the LLM; on timeout/failure, aggressively compact and retry.
+
+        Mutates `history` in place when compaction runs so subsequent turns
+        don't immediately re-bloat. Recovery strategy: (1) strip stale
+        ephemeral messages (tester only) and halve history, (2) halve again.
+        """
+        def _build_messages():
+            trimmed = ctx.trim_messages(history)
+            return ctx.inject_summary(trimmed)
+
+        try:
+            return await self.llm.chat(_build_messages(), tools=tools)
+        except RuntimeError as e:
+            logger.warning("LLM call failed (%s) — compacting and retrying", e)
+            self.display.status("LLM timed out — compacting context and retrying...")
+
+        # First recovery attempt: strip ephemeral + halve
+        if is_tester:
+            history[:] = _strip_stale_ephemeral(history)
+        history[:] = _halve_history(history)
+        try:
+            return await self.llm.chat(_build_messages(), tools=tools)
+        except RuntimeError as e:
+            logger.warning("Retry after compaction still failed (%s) — halving again", e)
+
+        # Second recovery attempt: halve once more
+        history[:] = _halve_history(history)
+        return await self.llm.chat(_build_messages(), tools=tools)
+
     async def _tester_turn(self, scenario: Scenario) -> str | None:
         """Have the Tester agent produce a task for the User."""
         is_exploration = not scenario.eval_goals and not scenario.goals
@@ -341,13 +397,11 @@ class Orchestrator:
                 ),
             })
 
-        # Trim and add summary
-        self._state.tester_messages = self.tester_ctx.trim_messages(
-            self._state.tester_messages
+        response = await self._chat_with_recovery(
+            self._state.tester_messages,
+            self.tester_ctx,
+            is_tester=True,
         )
-        messages = self.tester_ctx.inject_summary(self._state.tester_messages)
-
-        response = await self.llm.chat(messages)
         if not response.content:
             return None
 
@@ -398,13 +452,11 @@ class Orchestrator:
         })
 
         for iteration in range(self.config.max_tool_iterations):
-            # Trim and add summary
-            self._state.user_messages = self.user_ctx.trim_messages(
-                self._state.user_messages
+            response = await self._chat_with_recovery(
+                self._state.user_messages,
+                self.user_ctx,
+                tools=self._tools,
             )
-            messages = self.user_ctx.inject_summary(self._state.user_messages)
-
-            response = await self.llm.chat(messages, tools=self._tools)
 
             # Handle tool calls
             if response.tool_calls:

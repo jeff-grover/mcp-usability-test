@@ -30,6 +30,11 @@ class LLMConfig:
     retry_delay_seconds: float = 5.0
     reasoning_effort: str | None = None  # "low" | "medium" | "high" (gpt-oss)
     system_prompt_suffix: str | None = None  # e.g. "/no_think" for Qwen3
+    top_p: float | None = None
+    frequency_penalty: float | None = None
+    presence_penalty: float | None = None
+    min_p: float | None = None  # LM Studio extension, routed via extra_body
+    degeneration_char_threshold: int = 40  # 0 disables detection
 
 
 @dataclass
@@ -56,6 +61,10 @@ class LLMClient:
             api_key=self.config.api_key,
             timeout=self.config.timeout_seconds,
         )
+        t = self.config.degeneration_char_threshold
+        self._degen_re: re.Pattern[str] | None = (
+            re.compile(rf"(.)\1{{{t - 1},}}", re.DOTALL) if t > 0 else None
+        )
 
     async def chat(
         self,
@@ -76,6 +85,14 @@ class LLMClient:
                     "temperature": self.config.temperature,
                     "max_tokens": self.config.max_tokens,
                 }
+                if self.config.top_p is not None:
+                    kwargs["top_p"] = self.config.top_p
+                if self.config.frequency_penalty is not None:
+                    kwargs["frequency_penalty"] = self.config.frequency_penalty
+                if self.config.presence_penalty is not None:
+                    kwargs["presence_penalty"] = self.config.presence_penalty
+                if self.config.min_p is not None:
+                    kwargs["extra_body"] = {"min_p": self.config.min_p}
                 if self.config.reasoning_effort:
                     kwargs["reasoning_effort"] = self.config.reasoning_effort
                 if tools:
@@ -83,7 +100,9 @@ class LLMClient:
                     kwargs["tool_choice"] = "auto"
 
                 completion = await self._client.chat.completions.create(**kwargs)
-                return self._parse_response(completion, has_tools=bool(tools))
+                response = self._parse_response(completion, has_tools=bool(tools))
+                self._check_degeneration(response.content)
+                return response
 
             except Exception as e:
                 last_error = e
@@ -101,6 +120,25 @@ class LLMClient:
         raise RuntimeError(
             f"LLM call failed after {self.config.max_retries} attempts"
         ) from last_error
+
+    def _check_degeneration(self, content: str | None) -> None:
+        """Raise RuntimeError if the model emitted a long repeated-char run.
+
+        Local models (especially gpt-oss MLX) sometimes collapse into emitting
+        the same token repeatedly (e.g. "@@@@..."). A clean 200 OK makes this
+        invisible to the transport layer — we catch it here and raise so the
+        chat() retry loop + orchestrator's compact-and-retry path kick in.
+        """
+        if not self._degen_re or not content:
+            return
+        match = self._degen_re.search(content)
+        if not match:
+            return
+        run_len = match.end() - match.start()
+        char = match.group(1)
+        raise RuntimeError(
+            f"LLM output degenerated: {run_len} consecutive {char!r} chars"
+        )
 
     def _parse_response(self, completion: ChatCompletion, has_tools: bool = False) -> LLMResponse:
         """Parse a completion into an LLMResponse, with fallback parsing."""

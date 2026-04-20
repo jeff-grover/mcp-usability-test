@@ -144,6 +144,13 @@ def build_orchestrator_config(raw: dict) -> OrchestratorConfig:
         retry_delay_seconds=llm_raw.get("retry_delay_seconds", 5.0),
         reasoning_effort=_pick("reasoning_effort", None),
         system_prompt_suffix=_pick("system_prompt_suffix", None),
+        top_p=_pick("top_p", None),
+        frequency_penalty=_pick("frequency_penalty", None),
+        presence_penalty=_pick("presence_penalty", None),
+        min_p=_pick("min_p", None),
+        degeneration_char_threshold=llm_raw.get(
+            "degeneration_char_threshold", 40
+        ),
     )
 
     mcp_raw = raw.get("mcp_server", {})

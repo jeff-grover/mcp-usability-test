@@ -8,6 +8,12 @@ llm:
   timeout_seconds: 120
   max_retries: 3
   retry_delay_seconds: 5.0
+  # Optional sampler knobs — omit to use model/server defaults.
+  # top_p: 1.0
+  # frequency_penalty: 0.3    # breaks "@@@@" repetition loops on gpt-oss
+  # presence_penalty: 0.0
+  # min_p: 0.05               # LM Studio extension; trims pathological tail tokens
+  # degeneration_char_threshold: 40  # 0 disables repeat-char detection
 
 # Per-model defaults selected by substring match against llm.model.
 # Longest matching key wins. Explicit llm.<key> entries above still
@@ -19,6 +25,9 @@ model_profiles:
     temperature: 0.3           # stricter template, lower temp for tool-calling
   gpt-oss:
     temperature: 1.0           # OpenAI's recommended sampler for gpt-oss
+    top_p: 1.0
+    min_p: 0.05                # trims the tail where "@@@" degeneration lives
+    frequency_penalty: 0.3     # additional insurance against repetition loops
     reasoning_effort: "high"   # better tool selection on agentic loops
   qwen:
     temperature: 0.7           # Qwen3 non-thinking default (publisher rec.)

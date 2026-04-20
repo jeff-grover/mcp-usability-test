@@ -145,27 +145,28 @@ class ContextManager:
 
         Stricter chat templates (e.g. Mistral's) enforce user/assistant
         alternation starting with user after the system prompt, and return a
-        400 on violations. Two situations can produce violations in the
-        tester's history:
+        400 on violations. Three situations can produce violations:
 
         1. Consecutive user messages — the tester turn appends several
            ephemeral user messages per round (goal status, coverage, variety
            hint, tool transcript). Merge them.
         2. Leading assistant after system — `_strip_stale_ephemeral` drops
            the ephemeral user messages that led to a past assistant reply,
-           orphaning that assistant at the head of history. Drop leading
-           assistants until the first non-system message is user (or tool,
-           which is template-valid after tool_calls).
+           orphaning that assistant at the head of history.
+        3. Leading tool after system — window trimming or `_halve_history`
+           can slice mid-tool-sequence, leaving `tool` messages whose paired
+           assistant `tool_calls` message no longer precedes them.
 
-        Applied at the LLM boundary so stored history is unaffected.
+        Drop everything between the system message and the first user
+        message to handle (2) and (3) together. Applied at the LLM boundary
+        so stored history is unaffected.
         """
-        # Drop leading orphan assistant messages after the system prompt
         result: list[dict[str, Any]] = []
         i = 0
         if messages and messages[0].get("role") == "system":
             result.append(messages[0])
             i = 1
-        while i < len(messages) and messages[i].get("role") == "assistant":
+        while i < len(messages) and messages[i].get("role") != "user":
             i += 1
 
         for msg in messages[i:]:

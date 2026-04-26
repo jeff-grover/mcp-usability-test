@@ -13,6 +13,23 @@ from mcp.client.sse import sse_client
 logger = logging.getLogger(__name__)
 
 
+def _scrub_nulls(obj: Any) -> Any:
+    """Recursively drop dict keys whose value is None.
+
+    MCP `inputSchema` JSON Schema commonly carries null `description`,
+    `default`, `title`, `examples`, etc. when those metadata fields aren't
+    set. Some local-LLM Jinja chat templates apply `{{ x | string }}` to
+    such fields and fail with "Cannot apply filter 'string' to type:
+    NullValue". JSON Schema treats absent and null as equivalent for these
+    optional fields, so dropping them is safe.
+    """
+    if isinstance(obj, dict):
+        return {k: _scrub_nulls(v) for k, v in obj.items() if v is not None}
+    if isinstance(obj, list):
+        return [_scrub_nulls(x) for x in obj]
+    return obj
+
+
 @dataclass
 class MCPConfig:
     transport: str = "streamable_http"  # "streamable_http" or "sse"
@@ -98,7 +115,7 @@ class MCPBridge:
                 "function": {
                     "name": tool.name,
                     "description": tool.description or "",
-                    "parameters": tool.inputSchema,
+                    "parameters": _scrub_nulls(tool.inputSchema) or {},
                 },
             }
             openai_tools.append(openai_tool)

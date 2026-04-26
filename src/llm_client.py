@@ -18,6 +18,26 @@ from openai.types.chat import (
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_messages(
+    messages: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Coerce `content: None` to `""` on every message.
+
+    The OpenAI API accepts `content: null` on assistant messages with
+    `tool_calls`, but several local-LLM Jinja chat templates apply
+    `{{ message.content | string }}` and fail with "Cannot apply filter
+    'string' to type: NullValue". An empty string renders identically for
+    every template we've seen, so the coercion is safe.
+    """
+    out: list[dict[str, Any]] = []
+    for m in messages:
+        if m.get("content") is None:
+            m = dict(m)
+            m["content"] = ""
+        out.append(m)
+    return out
+
+
 @dataclass
 class LLMConfig:
     base_url: str = "http://localhost:1234/v1"
@@ -77,11 +97,12 @@ class LLMClient:
         Falls back to text-parsing for malformed tool calls.
         """
         last_error: Exception | None = None
+        sanitized_messages = _sanitize_messages(messages)
         for attempt in range(self.config.max_retries):
             try:
                 kwargs: dict[str, Any] = {
                     "model": self.config.model,
-                    "messages": messages,
+                    "messages": sanitized_messages,
                     "temperature": self.config.temperature,
                     "max_tokens": self.config.max_tokens,
                 }

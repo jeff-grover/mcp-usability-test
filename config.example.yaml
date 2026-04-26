@@ -53,24 +53,43 @@ orchestrator:
   result_truncation: 8000       # max chars per tool result
 
 scenarios:
-  # Core analysis workflows (eval_goals-based)
-  - scenarios/ab_test_analysis.yaml
-  - scenarios/lift_drivers.yaml
-  - scenarios/result_interpretation.yaml
-  - scenarios/rollout_planning.yaml
-  - scenarios/store_availability.yaml
-  - scenarios/rollout_analysis.yaml
-  - scenarios/stakeholder_report.yaml
-  - scenarios/portfolio_monitoring.yaml
-  - scenarios/lift_explorer_deep_dive.yaml
-  - scenarios/product_keyword_search.yaml
-  - scenarios/store_lookup_by_id.yaml
-  - scenarios/cross_client_analysis.yaml
-  - scenarios/rollout_prediction.yaml
-  # General exploration (goals-based, no eval tracking)
-  - scenarios/basic_exploration.yaml
-  - scenarios/store_comparison.yaml
-  - scenarios/error_recovery.yaml
+  # Scenario sets are organized into subdirectories under scenarios/.
+  # Currently:
+  #   scenarios/general/      — client-agnostic workflows (any retailer)
+  #   scenarios/floor_and_decor/ — Floor & Decor-specific scenarios
+  # Stage which set you want to run by listing the paths below. The loader
+  # opens each path explicitly (no directory scanning), so any combination
+  # is valid.
+
+  # ── General (client-agnostic) — core analysis workflows ──
+  - scenarios/general/ab_test_analysis.yaml
+  - scenarios/general/lift_drivers.yaml
+  - scenarios/general/result_interpretation.yaml
+  - scenarios/general/rollout_planning.yaml
+  - scenarios/general/store_availability.yaml
+  - scenarios/general/rollout_analysis.yaml
+  - scenarios/general/stakeholder_report.yaml
+  - scenarios/general/portfolio_monitoring.yaml
+  - scenarios/general/lift_explorer_deep_dive.yaml
+  - scenarios/general/product_keyword_search.yaml
+  - scenarios/general/store_lookup_by_id.yaml
+  - scenarios/general/cross_client_analysis.yaml
+  - scenarios/general/rollout_prediction.yaml
+  # ── General — exploration (goals-based, no eval tracking) ──
+  - scenarios/general/basic_exploration.yaml
+  - scenarios/general/store_comparison.yaml
+  - scenarios/general/error_recovery.yaml
+
+  # ── Floor & Decor (client-pinned to floor_and_decor) ──
+  # Uncomment the F&D set when running F&D-specific evaluations.
+  # - scenarios/floor_and_decor/fnd_cannibalization_audit.yaml
+  # - scenarios/floor_and_decor/fnd_pro_diy_segmentation.yaml
+  # - scenarios/floor_and_decor/fnd_smaller_project_pivot.yaml
+  # - scenarios/floor_and_decor/fnd_financing_offer_ab.yaml
+  # - scenarios/floor_and_decor/fnd_regional_recovery_signal.yaml
+  # - scenarios/floor_and_decor/fnd_vendor_day_b2b_ltv.yaml
+  # - scenarios/floor_and_decor/fnd_2026_design_trends.yaml
+  # - scenarios/floor_and_decor/fnd_test_program_intensity.yaml
 
 output:
   observations_dir: "observations"

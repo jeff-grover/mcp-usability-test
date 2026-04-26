@@ -1,0 +1,60 @@
+name: "F&D Regional Housing-Recovery Leading Indicator"
+description: >
+  Wall Street analysts disagree about when (and whether) the housing
+  "lock-in effect" thaw will translate into Floor & Decor's comparable
+  store sales. Piper Sandler is bullish on H1 2026 acceleration; Wolfe
+  Research is bearish on macro housing trends. F&D operates in 39 states
+  with rich region/district/state tag conventions — its own test-period
+  treatment trajectory is a faster regional read on housing recovery
+  than NAR existing-home-sales prints. This scenario uses F&D's tagging
+  + the new period-labeled time-series shape to identify which regions
+  are showing recovery first.
+persona: >
+  You are a strategy analyst at Floor & Decor (client id `floor_and_decor`).
+  Wall Street is split on whether the housing lock-in is thawing fast
+  enough to lift F&D's comps in H1 2026. You want to answer that question
+  empirically using F&D's own tests — specifically by examining whether
+  test-period lift trajectories are accelerating in some regions ahead of
+  others. The persona hypothesis: regions where lift is accelerating
+  test-period over pre-period are leading-indicator markets for the
+  broader recovery.
+
+goals:
+  - "Discover the region tagging convention used at F&D"
+  - "Identify recent tests scoped to specific regions"
+  - "Compare test-period vs pre-period trajectories across regions and name the leading indicators"
+
+eval_goals:
+  - id: "discover_region_taxonomy"
+    task: "Discover what region-related tag conventions exist at F&D — are regions encoded as a single-token prefix (e.g. region East / region South), or some other shape?"
+    success_hint: "User calls get_tag_taxonomy(client='floor_and_decor') and identifies 'region' as a frequent token plus the region values (East, South, West, etc.) and reports them"
+
+  - id: "recent_tests_by_region"
+    task: "For two contrasting regions (one Sun Belt, one Northeast), pull recently-created tests scoped to each — last 90 days"
+    success_hint: "User calls list_recent_tests(client='floor_and_decor', tag='region South', since='<90d ago>') and the equivalent for 'region East' and reports the test counts plus a few representative test names"
+
+  - id: "examine_period_trajectories"
+    task: "Pick one test from each region with COMPLETED status. Pull its full per-week trajectory using the raw test results shape, and use the period-labeled by-week fields to compare pre period to test period"
+    success_hint: "User calls get_test_results(test_id=<X>, summary_only=false) for each region's representative test and explicitly references the treatment_value_by_week field with its pre period / implementation period / test period labels"
+
+  - id: "identify_acceleration_pattern"
+    task: "Determine which region is showing a steeper acceleration from pre period to test period — that's the candidate leading indicator"
+    success_hint: "User computes (or estimates by eye) test-period mean / pre-period mean for each region's test and names the region with the larger ratio as the leading indicator candidate"
+
+  - id: "validate_with_metric_time_series"
+    task: "Validate the regional acceleration finding using get_metric_time_series, which provides annotations like trend_direction, volatility, parallel_trends, and inflection"
+    success_hint: "User calls get_metric_time_series for the same tests and reports the trend_direction + parallel_trends verdicts, confirming or revising the leading-indicator call"
+
+  - id: "name_two_leaders"
+    task: "Name two regions you would forecast to comp-recover first based on the test-period trajectory analysis"
+    success_hint: "User produces a final 1-2 sentence call naming the two leading regions and the magnitude of the acceleration signal"
+
+tester_focus:
+  - "Watch for: Does the user discover the region tag convention via get_tag_taxonomy or hardcode region names from external knowledge?"
+  - "Watch for: Does the user use list_recent_tests with the tag filter (a Round-2 capability), or fall back to broader search_tests?"
+  - "Watch for: When reading get_test_results raw output, does the user correctly use the period-labeled treatment_value_by_week field, or get lost in the legacy period-nested out_treatment_value structure?"
+  - "Watch for: Does the user distinguish 'test period' acceleration (post-treatment lift growing) from 'pre period' divergence (parallel-trends violation)?"
+  - "Watch for: Does the user realize that get_metric_time_series's parallel_trends annotation is the right tool for confirming the test setup is clean before reading too much into the result?"
+  - "Watch for: Is the final leading-indicator call grounded in data magnitude or just in regional intuition?"
+
+max_rounds: 35

@@ -1,0 +1,58 @@
+name: "F&D Test Program Intensity Audit"
+description: >
+  Meta-scenario for F&D analytics leadership reviewing the testing
+  program as a whole — bucket distribution, cadence, tag families
+  receiving disproportionate analytical attention, and overall
+  intensity. Produces a state-of-the-program baseline that can be
+  compared against future quarters or against the next client F&D's
+  customer success team onboards. Differs from the other F&D scenarios
+  in that it's reflective rather than task-driven — the persona is
+  explicitly diagnostic.
+persona: >
+  You are an analytics-leadership executive at Floor & Decor (client
+  id `floor_and_decor`). Your CFO has asked for a state-of-the-test-
+  program assessment ahead of the FY26 capex review. You want to
+  characterize the testing program's intensity (cadence, volume),
+  shape (bucket distribution by selection mode), and focus (which tags
+  and categories receive disproportionate analytical attention) — and
+  produce a 5-bullet baseline document.
+
+goals:
+  - "Produce a single-call client overview"
+  - "Characterize the testing program's bucket distribution and cadence"
+  - "Identify which tag families and categories are receiving the most analytical attention"
+
+eval_goals:
+  - id: "client_overview_one_call"
+    task: "Get a single-call overview of Floor & Decor as a client — profile, testable site count, active test count, top-level hierarchy IDs, top categories"
+    success_hint: "User calls get_client_summary(client='floor_and_decor') and reads the response — top_level_hierarchies, testable_site_count, active_test_count, top_category_sales"
+
+  - id: "tag_taxonomy_analytical_attention"
+    task: "Identify the tags receiving the most analytical attention — total references across tests, custom charts, lift explorers, and rollout analyses"
+    success_hint: "User calls get_tag_taxonomy(client='floor_and_decor') and reads the most_referenced_tags view, naming the top 5 tags by total references"
+
+  - id: "bucket_distribution"
+    task: "Get the bucket distribution of in-progress tests — how many tests scope on top-level hierarchy / one non-top hierarchy / multiple non-top hierarchies / one product / multiple products / mixed?"
+    success_hint: "User calls classify_tests_by_selection(client='floor_and_decor', test_status='IN_PROGRESS') and reports the bucket counts"
+
+  - id: "cadence_metrics"
+    task: "Compute the test-program cadence over the last 90 days — how many new tests, custom charts, and lift explorers have been created?"
+    success_hint: "User calls list_recent_tests, list_recent_charts, and list_recent_lift_explorers each with since=<90d ago> and reports the volumes"
+
+  - id: "interpret_bucket_shape"
+    task: "Interpret the bucket distribution — what does it tell you about how F&D's testing team approaches their work? E.g. high mixed = vendor-funded testing program; high top_level_hierarchy = a yellow flag of undifferentiated whole-store testing"
+    success_hint: "User produces a 1-paragraph interpretation linking bucket distribution to testing-program maturity, citing the actual numbers"
+
+  - id: "produce_5_bullet_baseline"
+    task: "Produce the final 5-bullet state-of-the-test-program baseline document for the CFO"
+    success_hint: "User produces 5 bullets covering: (1) client scale, (2) program intensity (cadence), (3) program shape (bucket distribution), (4) analytical attention (top tags), (5) one or two yellow flags or recommendations grounded in the data"
+
+tester_focus:
+  - "Watch for: Does the user reach for get_client_summary first, or do they call 4 separate tools (testable site count, top-level hierarchy, active tests, profile) in sequence?"
+  - "Watch for: Does the user use the cross-client fan-out pattern via clients=[...] anywhere, or correctly stay single-client for this F&D-specific brief?"
+  - "Watch for: When interpreting bucket distribution, does the user understand that 'mixed' is a valid selection_mode (vendor-funded tests scope BOTH hierarchies AND products), or do they treat mixed as a problem?"
+  - "Watch for: When reading get_tag_taxonomy's three views (frequent_tokens, largest_tags, most_referenced_tags), does the user pick the right one for 'analytical attention' (most_referenced) vs 'fleet partition size' (largest)?"
+  - "Watch for: Is the cadence number contextualized (per week, per month) or just stated as a raw 90-day count?"
+  - "Watch for: Does the final 5-bullet output read like a defensible CFO brief, or is it a transcript of tool outputs?"
+
+max_rounds: 30

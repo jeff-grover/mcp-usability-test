@@ -1,0 +1,56 @@
+name: "F&D Consumer Financing Offer A/B Hunt"
+description: >
+  Industry data (Floorzap / WFCA, 2026) shows that 80% of flooring
+  retailers offer consumer financing but it's utilized on fewer than
+  5% of completed jobs. Floor & Decor pushes financing aggressively —
+  10% off (up to $200) for new credit-card accounts on $299+ orders,
+  6 to 18 months at 0% APR, and a 48-month plan at 6.99% APR for
+  $2500+. The hypothesis is that financing prominence is a major,
+  under-exploited conversion lever. This scenario hunts F&D's existing
+  financing-offer test history and proposes new A/B configurations
+  for the gaps.
+persona: >
+  You are a consumer-finance / checkout analyst at Floor & Decor
+  (client id `floor_and_decor`). The CFO wants to know how much of
+  F&D's transaction volume currently runs through financing, what
+  financing-offer tests have already been run, and where untested
+  configurations might unlock additional conversion lift.
+
+goals:
+  - "Find any historical tests on financing offers, APR-promo length, or new-account thresholds"
+  - "Read the outcomes of those tests and identify what's been validated vs left open"
+  - "Propose three new financing-offer A/B tests targeting the untested configurations"
+
+eval_goals:
+  - id: "search_financing_tests"
+    task: "Search F&D's test history for any tests related to financing, credit cards, APR, or promotional financing — including drafts and work-in-progress tests"
+    success_hint: "User calls search_tests(client='floor_and_decor', keyword='financing', include_drafts=true) and equivalent for keyword='credit', keyword='apr', keyword='promo' — and consolidates results"
+
+  - id: "summarize_run_tests"
+    task: "For tests that completed (calcs_status='COMPLETE'), pull summaries and identify which financing variants outperformed"
+    success_hint: "User calls get_test_summary on the completed financing tests, reports lift_pct + confidence_tier for the primary metric, and names which variants won"
+
+  - id: "identify_untested_configs"
+    task: "List the financing configurations the persona's brief mentions (new-account 10% offer threshold, 0% APR promo length tiers 6/12/18 months, 48-month 6.99% APR placement) and identify which ones have NOT been tested yet"
+    success_hint: "User produces a table or list mapping each financing configuration to a 'tested' or 'untested' status, grounded in the search results"
+
+  - id: "examine_aov_impact"
+    task: "For one financing test that DID run, examine its impact on Average Order Value (AOV) week-by-week — does the financing offer pull AOV up only initially or sustainably?"
+    success_hint: "User calls get_metric_time_series(test_id=<X>, metric='Average Order Value' or similar) and uses the period-labeled treatment_value_by_week / control_value_by_week shape to describe the AOV trajectory"
+
+  - id: "propose_three_tests"
+    task: "Propose three new financing-offer A/B tests targeting the untested configurations, with specific hypotheses, store cohorts, and primary metrics"
+    success_hint: "User names three tests with hypotheses, store-cohort definitions (matched pairs, region tags, or high_potential_market filter), and a primary metric for each"
+
+  - id: "rank_by_expected_value"
+    task: "Rank the three proposed tests by expected business value, citing the comp-sales pressure and the <5% industry utilization gap"
+    success_hint: "User produces an ordered list with rationale tying each test to the corporate priority (defending comps, growing AOV, or capturing the utilization gap)"
+
+tester_focus:
+  - "Watch for: Does the user use include_drafts=true to surface work-in-progress financing tests?"
+  - "Watch for: Does the user search multiple keywords (financing / credit / apr / promo) or stop after the first?"
+  - "Watch for: When examining AOV trajectory, does the user correctly read the new period-labeled by_week fields with their pre period / implementation period / test period labels?"
+  - "Watch for: Are the proposed tests grounded in real F&D conventions (matched store pairs, existing tag families) or do they invent novel constructs the platform doesn't support?"
+  - "Watch for: Does the user understand that 'no test exists for X' is a valid finding worth reporting, not a search failure?"
+
+max_rounds: 35

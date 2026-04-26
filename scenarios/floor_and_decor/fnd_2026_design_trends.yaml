@@ -1,0 +1,57 @@
+name: "F&D 2026 Design Trends — Collection-Level Conversion"
+description: >
+  Floor & Decor's 2026 marketing strategy bets on four trend macro-themes:
+  Retro Rhapsody (Groovy Zellige Collection), Crème Brûlée Kitchens (warm
+  neutrals), Lush Landscape (biophilic earth tones), and Eclectic Artistry.
+  The Vetta Elements Collection is the 2026 Tile of the Year. F&D
+  cross-merchandises with Benjamin Moore. Are these trend bets converting
+  in test markets, or is the marketing campaign disconnected from the
+  test program? This scenario uses F&D's product hierarchy and test data
+  to evaluate trend-bet conversion empirically.
+persona: >
+  You are a merchandising / trends analyst at Floor & Decor (client id
+  `floor_and_decor`). Marketing is heavily promoting the 2026 trend
+  macro-themes — Vetta Elements (Tile of the Year), Groovy Zellige,
+  warm-neutral kitchens, biophilic palettes — and leadership wants to
+  know whether the trend bets are showing measurable conversion lift
+  in test markets, or whether marketing is operating disconnected from
+  the test program.
+
+goals:
+  - "Locate the trend-bet collections in F&D's product hierarchy"
+  - "Find tests scoped to those collections and read post-launch conversion lift"
+  - "Compare to equivalent prior-year collection tests to isolate the trend effect"
+
+eval_goals:
+  - id: "find_trend_collections"
+    task: "Locate the product hierarchy nodes for the 2026 trend bets — Vetta Elements, Groovy Zellige, and any 'warm neutrals' or biophilic-styled lines"
+    success_hint: "User calls search_products(client='floor_and_decor', keyword='vetta'), 'zellige', 'groovy', and reports the matching hierarchy nodes (or notes when a collection isn't in the catalog under that name)"
+
+  - id: "tests_on_trend_collections"
+    task: "Find tests scoped to those collections — either via the hierarchy_id reverse lookup or via test name keyword search"
+    success_hint: "User calls get_test_products(hierarchy_id=<X>) for the trend nodes AND search_tests with collection-name keywords as a fallback, and consolidates the test list"
+
+  - id: "post_launch_ramp"
+    task: "For one trend test that's running or completed, examine its post-launch ramp using the period-labeled by-week shape — does conversion accelerate during the test period, or stay flat?"
+    success_hint: "User calls get_test_results(test_id=<X>, summary_only=false) and reads treatment_value_by_week with period labels, identifying whether test-period weeks show acceleration vs implementation period"
+
+  - id: "prior_year_baseline"
+    task: "Find a comparable prior-year collection-level test — same general product category, similar test length, but launched before the 2026 trend campaign — to serve as a baseline"
+    success_hint: "User searches for 2024 or 2025 collection tests on tile/laminate/LVP and identifies one that's structurally comparable (matching measurement_type and similar treatment count)"
+
+  - id: "trend_lift_isolation"
+    task: "Compare the trend-bet test's lift to the prior-year baseline — is the 2026 trend converting more, less, or the same as comparable collections did pre-trend campaign?"
+    success_hint: "User produces a quantitative comparison (lift_pct delta and confidence tier delta) and names whether the trend campaign is moving the needle"
+
+  - id: "merchandising_recommendation"
+    task: "Recommend whether to expand the trend-aligned merchandising layout (Lush Landscape vignettes, Crème Brûlée kitchen displays) to additional stores, hold steady, or pull back"
+    success_hint: "User produces a 1-paragraph recommendation grounded in the lift comparison with a specific call (expand / hold / pull back) and a candidate cohort for expansion if applicable"
+
+tester_focus:
+  - "Watch for: Does the user understand that trend collections might be addressable by product hierarchy, by tag (some clients tag trends), or by test name keyword — and does the user explore multiple paths or stop at the first dead end?"
+  - "Watch for: When using search_products, does the user combine results across multiple keywords (vetta + zellige + groovy) or run them as serial isolated searches?"
+  - "Watch for: Does the user correctly use the new period-labeled treatment_value_by_week field to compare implementation-period weeks vs test-period weeks?"
+  - "Watch for: Does the user pick a structurally comparable prior-year baseline (same measurement_type, similar treatment count, similar test length), or pick something that's incomparable and produces a misleading delta?"
+  - "Watch for: Is the 'merchandising recommendation' grounded in store-pair matching logic the platform supports, or does it propose a cohort the platform can't easily execute against?"
+
+max_rounds: 30

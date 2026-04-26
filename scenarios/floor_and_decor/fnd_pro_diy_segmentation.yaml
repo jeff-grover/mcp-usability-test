@@ -1,0 +1,54 @@
+name: "F&D Pro vs DIY Market Segmentation"
+description: >
+  Floor & Decor's revenue resilience increasingly depends on the Professional
+  and Commercial segments offsetting softness in DIY consumer comps. F&D
+  flags 171 sites with the `high potential market` tag — but is that
+  designation a real predictor of Pro-segment outperformance, or a
+  self-fulfilling label that simply concentrates F&D's investment? This
+  scenario validates the Pro-segment thesis using F&D's own test data.
+persona: >
+  You are a Pro-segment marketing analyst at Floor & Decor (client id
+  `floor_and_decor`). Leadership wants to know whether the
+  `high potential market` site designation is a meaningful Pro/commercial
+  predictor or just an artifact of where F&D has historically invested
+  attention. You need to compare test outcomes inside vs outside the
+  171-site cohort on Pro-relevant categories.
+
+goals:
+  - "Discover the high_potential_market cohort and validate its size"
+  - "Compare test outcomes inside vs outside the cohort on the same product categories"
+  - "Determine whether the cohort's performance edge is in lift magnitude, confidence tier mix, or both"
+
+eval_goals:
+  - id: "discover_high_potential_cohort"
+    task: "Identify the size and shape of the high_potential_market cohort — how many sites carry it, and how widely the tag is referenced in active testing"
+    success_hint: "User calls list_site_tags(client='floor_and_decor', pattern='potential') and reports the site_count + test_count for the high_potential_market tag"
+
+  - id: "find_pro_relevant_tests_in_cohort"
+    task: "Find tests scoped to the high_potential_market cohort with measured outcomes (any tier above inconclusive)"
+    success_hint: "User calls search_tests(client='floor_and_decor', tag='high potential market', test_status='COMPLETED', min_confidence_tier='possible') and gets back a candidate list"
+
+  - id: "fleet_baseline_for_same_categories"
+    task: "Pull a fleet-wide baseline for the same product categories those tests scoped — same categories, no high_potential_market filter — so a fair apples-to-apples comparison is possible"
+    success_hint: "User identifies the categories from the cohort tests' selection_signature or get_test_products output, then runs search_tests against fleet-scope (no high_potential filter) for the same categories"
+
+  - id: "tier_mix_comparison"
+    task: "Compare the confidence_tier mix of the cohort's test outcomes to the fleet baseline — is high_potential disproportionately producing clear_win outcomes, or just more tests that finish at the same tier mix?"
+    success_hint: "User uses search_tests outcome filters (lift_direction, min_confidence_tier) and/or get_lift_explorer (which now emits per-slice confidence_tier) to produce a tier-distribution comparison"
+
+  - id: "district_level_drill_in"
+    task: "Drill into one cohort test that has a district-level lift explorer — does the high_potential effect concentrate in specific districts or spread evenly?"
+    success_hint: "User calls get_lift_explorer on a district-level explorer (e.g. id 552 from test 3582), reads per-slice confidence_tier, and identifies whether the cohort effect is district-uniform or district-concentrated"
+
+  - id: "decision_summary"
+    task: "Recommend whether high_potential_market should remain a primary cohort selector for Pro-targeted tests, be retired, or be redefined"
+    success_hint: "User produces a one-paragraph recommendation grounded in the comparison data with a specific call (keep / retire / redefine)"
+
+tester_focus:
+  - "Watch for: Does the user discover the tag via get_tag_taxonomy / list_site_tags, or hardcode it from the persona text?"
+  - "Watch for: Does the user compute selection_signature on cohort tests and use the per-test bucket info, or guess test scopes from names?"
+  - "Watch for: When comparing tier mix, does the user correctly distinguish 'we test more here' (selection bias) from 'tests perform better here' (causal lift)?"
+  - "Watch for: Does the user understand that confidence_tier on lift_explorer slices uses client-specific thresholds and not a hardcoded 95%?"
+  - "Watch for: Are district-level patterns surfaced via get_lift_explorer, or does the user try to derive them from get_test_results filter_type=SITE_PAIR?"
+
+max_rounds: 30

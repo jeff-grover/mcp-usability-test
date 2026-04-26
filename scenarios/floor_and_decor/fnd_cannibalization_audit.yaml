@@ -1,0 +1,63 @@
+name: "F&D Cannibalization Audit for 2026 Store Openings"
+description: >
+  Floor & Decor opens 8 new warehouses in Q1 2026 (Fayetteville NC,
+  Vacaville CA, Staten Island NY, Grapevine TX, Syracuse NY, Bethel
+  Park PA, Happy Valley/Clackamas OR, Mount Vernon NY). The densification
+  strategy depends on cannibalization staying bounded. F&D's existing
+  tag conventions include "40-60 mile cannibalization 2023",
+  "60-75 minute cannibalization 2023", and "60-90 minute cannibalization
+  2023" — but only against the 2023 store-opening cohort. This scenario
+  exercises whether the MCP supports a real-time cannibalization audit
+  for the 2026 cohort: identifying nearby existing stores, pulling their
+  test history, tracking post-launch trajectories week-by-week, and
+  formulating a follow-up testing protocol.
+persona: >
+  You are a real-estate strategy analyst at Floor & Decor (client id
+  `floor_and_decor`). The CFO is pushing the densification thesis hard —
+  20 new stores per year toward a 500-store target — and your job is to
+  validate that new openings are NOT cannibalizing nearby existing-store
+  comps faster than the new stores' own ramp can absorb. Eight new
+  warehouses opened or are opening in Q1 2026. You need to evaluate the
+  cannibalization risk for each one using the test data the merchandising
+  and operations teams have already accumulated.
+
+goals:
+  - "Discover what cannibalization-related conventions F&D already uses in their site tagging"
+  - "Pull the geographic and analytical data needed to assess each new opening's cannibalization risk against existing stores"
+  - "Recommend a follow-up testing protocol grounded in what the existing data already supports"
+
+eval_goals:
+  - id: "discover_cannibalization_taxonomy"
+    task: "Discover what cannibalization-related tag conventions exist at Floor & Decor — what families are tagged, what the leading tokens are, and how widely each convention is used"
+    success_hint: "User calls get_tag_taxonomy(client='floor_and_decor') and/or list_site_tags(pattern='cannibalization') and identifies the 40-60 mile / 60-75 minute / 60-90 minute tag families plus their site coverage"
+
+  - id: "find_nearby_existing_stores"
+    task: "For two of the 2026 openings (one Sun Belt, one Northeast), identify the nearest existing F&D stores by city/state — these are the candidates most at risk of cannibalization"
+    success_hint: "User calls get_sites(client='floor_and_decor', state='TX', fields=['client_site_id','site_name','city','state_province']) for Grapevine and equivalent for Staten Island, and reports candidate near-stores"
+
+  - id: "pull_test_history_for_at_risk_stores"
+    task: "For one of those candidate stores, pull its full test history — which tests has the store participated in, what role (treatment vs control), what were the outcomes"
+    success_hint: "User calls get_site_tests(client_site_id=<X>, client='floor_and_decor') and reports the test list with role and calcs_status; bonus if they pull get_test_summary on a couple of those tests for context"
+
+  - id: "examine_2023_cannibalization_test_trajectory"
+    task: "Find a test scoped to the 2023 cannibalization cohort (any of the 40-60 mile / 60-75 minute / 60-90 minute tag families) and inspect its week-by-week trajectory using the period-labeled time-series shape"
+    success_hint: "User calls search_tests(client='floor_and_decor', tag='cannibalization') to find a scoped test, then get_test_results(test_id=<X>, summary_only=false) and references the treatment_value_by_week / *_by_week fields with their pre period / implementation period / test period labels"
+
+  - id: "size_the_pro_buffer"
+    task: "Use the existing high_potential_market tag to assess whether the at-risk near-stores are also high-Pro markets — Pro/commercial revenue can absorb DIY cannibalization that pure-DIY markets can't"
+    success_hint: "User calls get_sites(tag='high potential market') or list_site_tags(pattern='potential') to get the 171-site cohort, intersects with the candidate at-risk stores, and reports overlap"
+
+  - id: "propose_followup_testing_protocol"
+    task: "Recommend a concrete follow-up testing protocol — what new tag family should be created, which existing stores should be tagged as the at-risk cohort, what dependent-variable metric to track, and what control cohort to pair them against"
+    success_hint: "User produces a written recommendation that names a 'cannibalization 2026' tag family, lists candidate at-risk stores by client_site_id, names a metric (e.g. B&M Sales or Comp Store Sales per Transaction), and proposes a control cohort outside the cannibalization radius"
+
+tester_focus:
+  - "Watch for: Does the user reach for get_tag_taxonomy / list_site_tags first, or do they brute-force discover the cannibalization tag convention via repeated get_sites probes?"
+  - "Watch for: When user explores the tag taxonomy, does the model recognize the cannibalization tags as a *category* (40-60 mile / 60-75 minute / 60-90 minute) rather than as individual unrelated tags?"
+  - "Watch for: When pulling per-store test history, does the user understand that get_site_tests requires a client_site_id (the customer-facing store number) and not an internal numeric id?"
+  - "Watch for: Does the user actually consume the new period-labeled treatment_value_by_week fields in their analysis, or do they fall back to the cumulative lift_pct only?"
+  - "Watch for: When recommending a follow-up testing protocol, does the user reference the existing pattern (the 2023 tag family) as a template — i.e. does discovery → recommendation flow feel like building on an existing framework, or like reinventing one?"
+  - "Watch for: Does the user get sidetracked by the broader 'should F&D open these stores' question (out of scope for this analysis), or stay focused on cannibalization risk specifically?"
+  - "Watch for: When asking about high_potential_market intersection, does the LLM understand that this is a TAG match and not a built-in column on get_sites?"
+
+max_rounds: 35

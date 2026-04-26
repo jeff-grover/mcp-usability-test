@@ -1,0 +1,58 @@
+name: "F&D Smaller-Project Pivot — Opening-Price-Point Resilience"
+description: >
+  Floor & Decor's FY25 comparable store sales declined 1.8% (Q4 -4.8%),
+  driven in part by a consumer shift toward smaller flooring projects
+  that mechanically reduces average transaction value. F&D positions
+  Luxury Vinyl Plank under $1.99/sqft and waterproof laminate under
+  $2.99/sqft as opening-price-point traffic drivers — but is the
+  smaller-project pivot actually translating into measurable category
+  lift, or is it cannibalizing premium tile/stone? This scenario uses
+  F&D's test data to validate the OPP thesis.
+persona: >
+  You are a merchandising / category manager at Floor & Decor (client
+  id `floor_and_decor`) responsible for Luxury Vinyl Plank, waterproof
+  laminate, and the broader hard-surface flooring assortment. Leadership
+  wants to know whether the opening-price-point bet is paying off in a
+  measurable way: are LVP and laminate tests showing stronger lift than
+  premium tile/stone tests, or is the consumer down-shift just diluting
+  the basket?
+
+goals:
+  - "Locate the LVP and laminate hierarchy nodes in F&D's product tree"
+  - "Pull tests scoped to those categories and compare lift to premium tile/stone tests"
+  - "Recommend two or three follow-up tests grounded in what the data already supports"
+
+eval_goals:
+  - id: "find_lvp_and_laminate_hierarchies"
+    task: "Locate the product hierarchy node IDs for Luxury Vinyl Plank and waterproof laminate in F&D's catalog"
+    success_hint: "User calls search_products(client='floor_and_decor', keyword='luxury vinyl plank') and equivalent for laminate, identifies the hierarchy_id values, and reports both"
+
+  - id: "tests_scoped_to_lvp"
+    task: "Find every test scoped to the LVP hierarchy (or any LVP descendant)"
+    success_hint: "User calls get_test_products(client='floor_and_decor', hierarchy_id=<LVP_id>) — the reverse-lookup mode that returns tests including a category — and reports the test list"
+
+  - id: "batch_summarize_opp_tests"
+    task: "Get summaries for the LVP and laminate tests in a single batched call so you can compare lift_pct and confidence_tier across them efficiently"
+    success_hint: "User calls get_test_summary(client='floor_and_decor', test_ids=[...]) with up to 10 ids and reads top_movers / metrics for each"
+
+  - id: "premium_baseline"
+    task: "Find tests scoped to premium tile or stone categories (anything notably more expensive than the OPP categories) for comparison"
+    success_hint: "User uses search_products keyword='tile' or keyword='stone' or get_hierarchy at a higher level to identify premium categories, then pulls tests scoped to them via get_test_products"
+
+  - id: "comp_pivot_validation"
+    task: "Determine whether the OPP categories are showing systematically stronger lift than premium categories, or whether the difference is noise"
+    success_hint: "User produces a quantitative comparison (e.g. mean lift_pct, tier-distribution, sample sizes) that lets a leader decide whether the OPP pivot is paying off"
+
+  - id: "propose_two_followups"
+    task: "Propose two specific follow-up tests that would either strengthen or refute the OPP-resilience thesis"
+    success_hint: "User names two tests with concrete scopes (e.g. 'LVP < $1.49 vs LVP < $1.99 in matched stores' or 'Bundled-OPP promotion in Sun Belt vs Northeast') and explains the hypothesis each tests"
+
+tester_focus:
+  - "Watch for: Does the user use get_test_products in reverse mode (hierarchy_id input → tests output), or do they iterate through all tests checking each?"
+  - "Watch for: Does the user use the batch get_test_summary(test_ids=[...]) to compare multiple tests in one call, or call it per-test?"
+  - "Watch for: Does the user surface the new selection_signature field on search_tests / get_test_list to immediately see hierarchy/product split per test?"
+  - "Watch for: When the user reads top_movers, does the persona correctly distinguish primary metrics (B&M Sales) from secondary ones?"
+  - "Watch for: Does the user accidentally include test_visibility=CHART rows in their analysis, or correctly stay on TEST visibility?"
+  - "Watch for: Does the user understand that confidence_tier values come from F&D's actual thresholds, not the platform default?"
+
+max_rounds: 30

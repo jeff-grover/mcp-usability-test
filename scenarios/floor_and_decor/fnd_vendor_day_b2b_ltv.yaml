@@ -1,0 +1,60 @@
+name: "F&D Vendor Day → B2B Pro-Account LTV"
+description: >
+  Floor & Decor hosts vendor-specific events at every grand opening
+  ("Schluter Day," "Mapei Day," "Laticrete Day," "wedi Day") featuring
+  10% volume discounts, live installation demos, and Pro Premier
+  account creation push. Anecdotally these events drive measurable
+  Pro/commercial revenue — but the qualitative claim has never been
+  quantified into LTV-per-event. This scenario hunts vendor-tied tests
+  in F&D's history, distinguishes new-account acquisition lift from
+  existing-account adoption lift, and produces a defensible per-event
+  LTV figure for capex conversations.
+persona: >
+  You are a Pro/commercial business development lead at Floor & Decor
+  (client id `floor_and_decor`). Operations is asking you to defend the
+  vendor-day investment at upcoming 2026 grand openings (Fayetteville,
+  Vacaville, Staten Island, Grapevine, Syracuse, Bethel Park, Happy
+  Valley, Mount Vernon). You need to quantify the Pro-segment lift
+  driven by vendor days — distinguishing "new Pro accounts created"
+  from "existing Pro accounts buying more vendor product" — and
+  produce an LTV-per-event estimate.
+
+goals:
+  - "Find tests tied to specific vendors (Schluter, Mapei, Laticrete, wedi)"
+  - "Distinguish new-account vs existing-account effects using the comp_flag or Pro tagging"
+  - "Produce a per-event LTV estimate grounded in actual lift magnitudes"
+
+eval_goals:
+  - id: "search_vendor_tests"
+    task: "Find tests tied to each of the four major vendors — Schluter, Mapei, Laticrete, wedi"
+    success_hint: "User calls search_tests with keyword='schluter' and equivalents, accumulating the union of vendor-tied tests across all four"
+
+  - id: "selection_signature_check"
+    task: "Examine the selection_signature on the vendor tests — vendor-funded tests typically scope BOTH hierarchies AND specific products (selection_mode='mixed'). Confirm or refute"
+    success_hint: "User uses fields=['selection_signature'] on get_test_list / search_tests and reports the bucket distribution across the vendor-tied tests"
+
+  - id: "extract_pro_segment_lift"
+    task: "For two of the vendor tests, pull the lift data — both overall and (if a lift explorer exists) sliced to capture the Pro/comp-flag signal"
+    success_hint: "User calls get_test_summary on the vendor tests and, for any with lift explorers, get_lift_explorer to read confidence_tier per slice (especially slices keyed on comp_flag or store-cohort tags)"
+
+  - id: "distinguish_new_vs_existing"
+    task: "Find a slice that distinguishes new Pro accounts from existing Pro accounts. The comp_flag tag family ('comp flag Y') or PRO Premier-related tags are the most likely vehicles"
+    success_hint: "User uses list_site_tags / get_tag_taxonomy to identify a Pro/comp-flag tag, then either re-runs the lift explorer with that grouping or examines existing slices that already key on it"
+
+  - id: "compute_ltv_estimate"
+    task: "Produce a per-event LTV estimate by combining the per-test numeric_lift dollars with the test's store coverage and a reasonable assumption about test-period-to-annual extrapolation"
+    success_hint: "User extracts numeric_lift from get_test_summary or get_test_results, scales by store count and time horizon, and produces a defensible $-per-event figure"
+
+  - id: "cohort_recommendation"
+    task: "Recommend which of the 8 Q1 2026 store openings should host which vendor day events first, ranked by expected LTV"
+    success_hint: "User produces an ordered recommendation pairing the 8 stores to vendor events, with rationale grounded in the LTV analysis (e.g. Sun Belt openings get Schluter first because of stronger tile-segment lift in those tests)"
+
+tester_focus:
+  - "Watch for: Does the user understand that vendor tests typically have selection_mode='mixed' (4 hierarchies + 3 products is a common shape)? Does the LLM get confused when the bucket isn't a clean 'categories_only' or 'products_only'?"
+  - "Watch for: Does the user use the new selection_signature projection to confirm bucket-shape inline, or call get_test_products per-test?"
+  - "Watch for: Does the user reach for get_lift_explorer when looking for new-vs-existing-account slices, or try to derive that from get_test_summary alone (which won't have the slice)?"
+  - "Watch for: Does the user use the new confidence_tier on lift_explorer slices to filter to credible signals before computing LTV, or include inconclusive slices in the math?"
+  - "Watch for: Is the LTV estimate grounded in numeric_lift dollars (the right metric) or in lift_pct (the wrong metric for absolute-dollar projection)?"
+  - "Watch for: Does the user understand that vendor-day tests are mostly post-launch follow-ups, not the launch event itself?"
+
+max_rounds: 35

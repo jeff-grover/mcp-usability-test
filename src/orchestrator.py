@@ -165,12 +165,37 @@ class Orchestrator:
                         "Compacted tester context on resume: %d -> %d tokens",
                         before, after,
                     )
+                # Re-resolve scenario by name, since the config's scenario
+                # list may have been reordered, renamed, or expanded since
+                # the state was saved. The integer scenario_index is not
+                # stable across config edits.
+                if self._state.scenario_name and self._state.user_messages:
+                    names = [s.name for s in self.config.scenarios]
+                    if self._state.scenario_name in names:
+                        new_idx = names.index(self._state.scenario_name)
+                        if new_idx != self._state.scenario_index:
+                            self.display.info(
+                                f"Scenario '{self._state.scenario_name}' "
+                                f"moved from index {self._state.scenario_index} "
+                                f"to {new_idx} after config edit"
+                            )
+                            self._state.scenario_index = new_idx
+                    else:
+                        self.display.error(
+                            f"Cannot resume: scenario "
+                            f"'{self._state.scenario_name}' is no longer "
+                            f"in the config's scenarios list. Run with "
+                            f"--fresh to start over, or restore the "
+                            f"scenario entry in config.yaml."
+                        )
+                        return
                 self.obs_writer.set_session_id(self._state.session_id)
                 self.user_ctx.summary = self._state.user_summary
                 self.tester_ctx.summary = self._state.tester_summary
                 self.display.info(
                     f"Resumed session {self._state.session_id} "
-                    f"at scenario {self._state.scenario_index}, "
+                    f"at scenario {self._state.scenario_index} "
+                    f"({self._state.scenario_name or 'unnamed'}), "
                     f"round {self._state.round_num}"
                 )
             else:
@@ -203,6 +228,10 @@ class Orchestrator:
         """Run a single scenario."""
         self.display.banner(scenario.name)
         self.display.status(scenario.description)
+
+        # Stamp the scenario name so future resumes can re-locate this
+        # scenario by name even if the config's scenario list is reordered.
+        self._state.scenario_name = scenario.name
 
         # Build system prompts
         user_system = build_user_system_prompt(
@@ -323,6 +352,7 @@ class Orchestrator:
 
         # Reset for next scenario
         self._state.round_num = 0
+        self._state.scenario_name = ""
         self._state.user_messages = []
         self._state.tester_messages = []
         self._state.completed_goals = []

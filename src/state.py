@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 class SessionState:
     session_id: str = ""
     scenario_index: int = 0
+    scenario_name: str = ""
     round_num: int = 0
     tester_messages: list[dict[str, Any]] = field(default_factory=list)
     user_messages: list[dict[str, Any]] = field(default_factory=list)

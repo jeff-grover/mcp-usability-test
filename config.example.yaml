@@ -28,7 +28,11 @@ model_profiles:
     top_p: 1.0
     min_p: 0.05                # trims the tail where "@@@" degeneration lives
     frequency_penalty: 0.3     # additional insurance against repetition loops
-    reasoning_effort: "high"   # better tool selection on agentic loops
+    # Inject the harmony "Reasoning: <level>" directive into the system
+    # prompt instead of using the OpenAI-style reasoning_effort field —
+    # GGUF gpt-oss builds in LM Studio don't expose the field as a custom
+    # KV, so the API-level setting is silently ignored.
+    system_prompt_suffix: "Reasoning: high"
   qwen:
     temperature: 0.7           # Qwen3 non-thinking default (publisher rec.)
     system_prompt_suffix: "/no_think"  # disables Qwen3 thinking mode

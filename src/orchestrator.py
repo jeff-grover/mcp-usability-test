@@ -49,6 +49,12 @@ def _halve_history(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     Also drops orphan `role: "tool"` messages at the head of the kept tail,
     since the OpenAI-format API rejects tool replies whose paired
     tool_calls assistant message is no longer present.
+
+    Always preserves at least one `role: "user"` message in the result —
+    some chat templates (e.g. Qwen multi-step-tool) raise
+    "No user query found in messages" when the prompt has none. If halving
+    leaves the tail with no user message, prepend the most recent user
+    message from the dropped portion.
     """
     if len(messages) <= 2:
         return list(messages)
@@ -59,7 +65,16 @@ def _halve_history(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     i = 0
     while i < len(tail) and tail[i].get("role") == "tool":
         i += 1
-    return system + tail[i:]
+    tail = tail[i:]
+
+    if not any(m.get("role") == "user" for m in tail):
+        dropped = rest[: len(rest) - keep]
+        for m in reversed(dropped):
+            if m.get("role") == "user":
+                tail = [m] + tail
+                break
+
+    return system + tail
 
 
 def _strip_stale_ephemeral(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
